@@ -66,6 +66,11 @@ internal sealed class ReportConfigOptions
     public IReadOnlyList<string>? OutputFields { get; init; }
 
     /// <summary>
+    /// Gets requested grouped count fields.
+    /// </summary>
+    public IReadOnlyList<string>? CountFields { get; init; }
+
+    /// <summary>
     /// Gets optional custom PDF report title.
     /// </summary>
     public string? PdfReportName { get; init; }

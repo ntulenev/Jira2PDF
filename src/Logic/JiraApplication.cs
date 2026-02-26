@@ -75,7 +75,8 @@ internal sealed class JiraApplication : IJiraApplication
                         reportTitle,
                         selectedReportConfig?.Name,
                         jql,
-                        issues);
+                        issues,
+                        selectedReportConfig?.CountFields);
                 }).ConfigureAwait(false);
 
             _jiraPresentationService.ShowReport(report, outputColumns);

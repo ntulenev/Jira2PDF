@@ -140,6 +140,7 @@ static IReadOnlyList<ReportConfig> ResolveReports(IReadOnlyList<ReportConfigOpti
             report.Name!.Trim(),
             report.Jql!.Trim(),
             report.OutputFields is null ? [] : [.. report.OutputFields],
+            report.CountFields is null ? [] : [.. report.CountFields],
             string.IsNullOrWhiteSpace(report.PdfReportName) ? null : report.PdfReportName.Trim()))
         .ToList();
 

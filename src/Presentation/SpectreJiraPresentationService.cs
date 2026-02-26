@@ -110,9 +110,11 @@ internal sealed class SpectreJiraPresentationService : IJiraPresentationService
         AnsiConsole.MarkupLine($"[grey]JQL:[/] {Markup.Escape(report.Jql)}");
         AnsiConsole.MarkupLine($"[grey]Total issues:[/] {report.Issues.Count.ToString(CultureInfo.InvariantCulture)}");
 
-        ShowCountTable("By Status", report.ByStatus);
-        ShowCountTable("By Issue Type", report.ByIssueType);
-        ShowCountTable("By Assignee", report.ByAssignee);
+        foreach (var countTable in report.CountTables)
+        {
+            ShowCountTable(countTable.Title, countTable.Rows);
+        }
+
         ShowIssuesTable(report.Issues, outputColumns);
     }
 

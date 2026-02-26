@@ -37,10 +37,12 @@ internal interface IJiraLogicService
     /// <param name="configName">Optional config name.</param>
     /// <param name="jql">JQL query.</param>
     /// <param name="issues">Loaded issues.</param>
+    /// <param name="configuredCountFields">Configured grouped count fields.</param>
     /// <returns>Prepared report model.</returns>
     JiraJqlReport BuildReport(
         string reportTitle,
         string? configName,
         string jql,
-        IReadOnlyList<JiraIssue> issues);
+        IReadOnlyList<JiraIssue> issues,
+        IReadOnlyList<string>? configuredCountFields);
 }

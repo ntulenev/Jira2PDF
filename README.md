@@ -15,9 +15,7 @@ Jira2PDF is a .NET 10 console utility that:
 - Loading UI while data is being prepared (`Preparing report...`, `Preparing PDF...`).
 - Console summary:
   - total issues,
-  - grouped counts by status,
-  - grouped counts by issue type,
-  - grouped counts by assignee,
+  - grouped counts by configurable fields,
   - issue table (first 50 rows in console).
 - PDF export with:
   - summary tables,
@@ -75,18 +73,21 @@ Main section: `Jira`
         "Name": "Completed Work - January",
         "Jql": "project in (APP, OPS) AND status in (Done, Closed, Resolved) AND updated >= \"2026-01-01\" AND updated < \"2026-02-01\" ORDER BY updated DESC",
         "OutputFields": [ "key", "issuetype", "status", "assignee", "updated", "summary" ],
+        "CountFields": [ "status", "assignee" ],
         "PdfReportName": "APP_OPS_Completed_Jan_2026"
       },
       {
         "Name": "High Priority In Progress",
         "Jql": "project = APP AND priority in (High, Highest) AND status in (\"In Progress\", \"Code Review\", Testing) ORDER BY priority DESC, updated DESC",
         "OutputFields": [ "key", "status", "assignee", "created", "summary" ],
+        "CountFields": [ "status", "issuetype", "assignee" ],
         "PdfReportName": "APP_HighPriority_Active"
       },
       {
         "Name": "Specific Ticket Set",
         "Jql": "key in (APP-101, APP-117, OPS-44, OPS-77) ORDER BY key ASC",
         "OutputFields": [ "key", "issuetype", "status", "summary" ],
+        "CountFields": [ "status" ],
         "PdfReportName": "Selected_Tickets_Snapshot"
       }
     ]
@@ -117,6 +118,7 @@ Each report item supports:
 - `Name`: display name in interactive selector.
 - `Jql`: query to run.
 - `OutputFields`: table columns for console/PDF.
+- `CountFields`: summary table groups to display (defaults to `status`, `issuetype`, `assignee`).
 - `PdfReportName`: optional custom report title/file base name.
 
 ## Output

@@ -28,14 +28,11 @@ internal sealed class PdfContentComposer : IPdfContentComposer
 
         column.Spacing(10);
 
-        _ = column.Item().Text("Summary by Status").Bold();
-        column.Item().Element(container => ComposeCountTable(container, report.ByStatus));
-
-        _ = column.Item().Text("Summary by Issue Type").Bold();
-        column.Item().Element(container => ComposeCountTable(container, report.ByIssueType));
-
-        _ = column.Item().Text("Summary by Assignee").Bold();
-        column.Item().Element(container => ComposeCountTable(container, report.ByAssignee));
+        foreach (var countTable in report.CountTables)
+        {
+            _ = column.Item().Text($"Summary {countTable.Title}").Bold();
+            column.Item().Element(container => ComposeCountTable(container, countTable.Rows));
+        }
 
         _ = column.Item().Text("Issues").Bold();
         column.Item().Element(container => ComposeIssuesTable(container, report.Issues, outputColumns, baseUrl));

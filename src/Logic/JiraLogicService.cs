@@ -95,8 +95,75 @@ internal sealed class JiraLogicService : IJiraLogicService
         string reportTitle,
         string? configName,
         string jql,
-        IReadOnlyList<JiraIssue> issues) =>
-        JiraJqlReport.Create(reportTitle, configName, jql, issues, DateTimeOffset.Now);
+        IReadOnlyList<JiraIssue> issues,
+        IReadOnlyList<string>? configuredCountFields)
+    {
+        ArgumentNullException.ThrowIfNull(issues);
+
+        var countTables = ResolveCountTables(issues, configuredCountFields);
+        return JiraJqlReport.Create(reportTitle, configName, jql, issues, countTables, DateTimeOffset.Now);
+    }
+
+    private static List<CountTable> ResolveCountTables(
+        IReadOnlyList<JiraIssue> issues,
+        IReadOnlyList<string>? configuredCountFields)
+    {
+        var fields = configuredCountFields is { Count: > 0 } ? configuredCountFields : _defaultCountOrder;
+        var tables = new List<CountTable>();
+        var seenFields = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var rawField in fields)
+        {
+            if (string.IsNullOrWhiteSpace(rawField))
+            {
+                continue;
+            }
+
+            var normalizedField = rawField.Trim();
+            if (!_countFields.TryGetValue(normalizedField, out var field))
+            {
+                throw new InvalidOperationException(
+                    $"Unsupported count field '{normalizedField}'. Supported values: {string.Join(", ", _countFields.Keys)}.");
+            }
+
+            if (seenFields.Add(field.Key))
+            {
+                tables.Add(new CountTable(
+                    $"By {field.Title}",
+                    GroupByCount(issues, field.Selector)));
+            }
+        }
+
+        if (tables.Count > 0)
+        {
+            return tables;
+        }
+
+        return [.. _defaultCountOrder.Select(defaultField =>
+        {
+            var field = _countFields[defaultField];
+            return new CountTable(
+                $"By {field.Title}",
+                GroupByCount(issues, field.Selector));
+        })];
+    }
+
+    private static IReadOnlyList<CountRow> GroupByCount(
+        IReadOnlyList<JiraIssue> issues,
+        Func<JiraIssue, string> selector)
+    {
+        return [.. issues
+            .GroupBy(
+                issue =>
+                {
+                    var value = selector(issue);
+                    return string.IsNullOrWhiteSpace(value) ? "Unknown" : value.Trim();
+                },
+                StringComparer.OrdinalIgnoreCase)
+            .Select(static group => new CountRow(group.Key, group.Count()))
+            .OrderByDescending(static group => group.Count)
+            .ThenBy(static group => group.Name, StringComparer.OrdinalIgnoreCase)];
+    }
 
     private static string SanitizeFileName(string value)
     {
@@ -135,6 +202,33 @@ internal sealed class JiraLogicService : IJiraLogicService
                     : "-")
         };
 
+    private static readonly IReadOnlyDictionary<string, CountField> _countFields =
+        new Dictionary<string, CountField>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["key"] = new CountField("key", "Key", static issue => issue.Key),
+            ["summary"] = new CountField("summary", "Summary", static issue => issue.Summary),
+            ["status"] = new CountField("status", "Status", static issue => issue.Status),
+            ["issuetype"] = new CountField("issuetype", "Issue Type", static issue => issue.IssueType),
+            ["assignee"] = new CountField("assignee", "Assignee", static issue => issue.Assignee),
+            ["created"] = new CountField(
+                "created",
+                "Created Date",
+                static issue => issue.Created.HasValue
+                    ? issue.Created.Value.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)
+                    : "Unknown"),
+            ["updated"] = new CountField(
+                "updated",
+                "Updated Date",
+                static issue => issue.Updated.HasValue
+                    ? issue.Updated.Value.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)
+                    : "Unknown")
+        };
+
     private static readonly IReadOnlyList<string> _defaultOutputOrder =
         ["key", "issuetype", "status", "assignee", "created", "updated", "summary"];
+
+    private static readonly IReadOnlyList<string> _defaultCountOrder =
+        ["status", "issuetype", "assignee"];
+
+    private sealed record CountField(string Key, string Title, Func<JiraIssue, string> Selector);
 }
