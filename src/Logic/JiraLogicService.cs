@@ -113,9 +113,7 @@ internal sealed class JiraLogicService : IJiraLogicService
     }
 
     private static List<string> ResolveCountFieldKeys(IReadOnlyList<string>? configuredCountFields)
-    {
-        return ResolveConfiguredFieldKeys(configuredCountFields, _defaultCountOrder);
-    }
+        => ResolveConfiguredFieldKeys(configuredCountFields, _defaultCountOrder);
 
     private static IReadOnlyList<CountRow> GroupByCount(
         IReadOnlyList<JiraIssue> issues,

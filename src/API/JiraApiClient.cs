@@ -1,6 +1,4 @@
-using System.Globalization;
 using System.Net;
-using System.Text.Json;
 
 using JiraReport.Abstractions;
 using JiraReport.Models;
@@ -21,13 +19,16 @@ internal sealed class JiraApiClient : IJiraApiClient
     /// </summary>
     /// <param name="transport">HTTP transport abstraction.</param>
     /// <param name="options">Application settings options.</param>
-    public JiraApiClient(IJiraTransport transport, IOptions<AppSettings> options)
+    /// <param name="issueMapper">Issue mapper.</param>
+    public JiraApiClient(IJiraTransport transport, IOptions<AppSettings> options, IIssueMapper issueMapper)
     {
         ArgumentNullException.ThrowIfNull(transport);
         ArgumentNullException.ThrowIfNull(options);
+        ArgumentNullException.ThrowIfNull(issueMapper);
 
         _transport = transport;
         _settings = options.Value;
+        _issueMapper = issueMapper;
     }
 
     /// <inheritdoc />
@@ -79,14 +80,15 @@ internal sealed class JiraApiClient : IJiraApiClient
         while (true)
         {
             var searchUrl =
-                $"rest/api/3/search/jql?jql={Uri.EscapeDataString(jql)}&fields={Uri.EscapeDataString(requestedFieldsCsv)}&maxResults={pageSize}";
+                $"rest/api/3/search/jql?jql={Uri.EscapeDataString(jql)}&fields={Uri.EscapeDataString(requestedFieldsCsv)}" +
+                $"&maxResults={pageSize}";
             if (!string.IsNullOrWhiteSpace(nextPageToken))
             {
                 searchUrl += $"&nextPageToken={Uri.EscapeDataString(nextPageToken)}";
             }
 
             var page = await GetSearchPageAsync(searchUrl, cancellationToken).ConfigureAwait(false);
-            issues.AddRange(MapIssues(page, aliasesByApiField));
+            issues.AddRange(_issueMapper.MapIssues(page, aliasesByApiField));
 
             nextPageToken = page.NextPageToken;
             if (page.Issues.Count == 0 || page.IsLast || string.IsNullOrWhiteSpace(nextPageToken))
@@ -113,10 +115,11 @@ internal sealed class JiraApiClient : IJiraApiClient
         while (true)
         {
             var searchUrl =
-                $"rest/api/3/search?jql={Uri.EscapeDataString(jql)}&fields={Uri.EscapeDataString(requestedFieldsCsv)}&startAt={startAt}&maxResults={pageSize}";
+                $"rest/api/3/search?jql={Uri.EscapeDataString(jql)}&fields={Uri.EscapeDataString(requestedFieldsCsv)}" +
+                $"&startAt={startAt}&maxResults={pageSize}";
 
             var page = await GetSearchPageAsync(searchUrl, cancellationToken).ConfigureAwait(false);
-            issues.AddRange(MapIssues(page, aliasesByApiField));
+            issues.AddRange(_issueMapper.MapIssues(page, aliasesByApiField));
 
             if (page.Issues.Count == 0)
             {
@@ -144,136 +147,6 @@ internal sealed class JiraApiClient : IJiraApiClient
 
         return page ?? throw new InvalidOperationException("Jira search response is empty.");
     }
-
-    private static IReadOnlyList<JiraIssue> MapIssues(
-        JiraSearchResponse page,
-        IReadOnlyDictionary<string, IReadOnlyList<string>> aliasesByApiField)
-    {
-        if (page.Issues.Count == 0)
-        {
-            return [];
-        }
-
-        return [.. page.Issues
-            .Where(static issue => !string.IsNullOrWhiteSpace(issue.Key))
-            .Select(issue =>
-            {
-                var fields = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-                if (issue.Fields?.Values is { Count: > 0 })
-                {
-                    foreach (var (fieldKey, rawValue) in issue.Fields.Values)
-                    {
-                        var normalizedFieldKey = NormalizeFieldKey(fieldKey);
-                        var fieldValue = NormalizeFieldValue(normalizedFieldKey, rawValue);
-                        fields[normalizedFieldKey] = fieldValue;
-
-                        if (aliasesByApiField.TryGetValue(normalizedFieldKey, out var aliases))
-                        {
-                            foreach (var alias in aliases)
-                            {
-                                fields[alias] = fieldValue;
-                            }
-                        }
-                    }
-                }
-
-                return new JiraIssue(issue.Key!.Trim(), fields);
-            })];
-    }
-
-    private static string NormalizeFieldValue(string fieldKey, JsonElement rawValue)
-    {
-        var value = ExtractJsonValue(rawValue);
-        if (string.IsNullOrWhiteSpace(value) || value == "-")
-        {
-            return "-";
-        }
-
-        var trimmed = value.Trim();
-        if (IsDateField(fieldKey) &&
-            DateTimeOffset.TryParse(trimmed, CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsed))
-        {
-            return parsed.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
-        }
-
-        return trimmed;
-    }
-
-    private static string ExtractJsonValue(JsonElement value)
-    {
-        switch (value.ValueKind)
-        {
-            case JsonValueKind.String:
-                return value.GetString() ?? "-";
-            case JsonValueKind.Number:
-            case JsonValueKind.True:
-            case JsonValueKind.False:
-                return value.ToString();
-            case JsonValueKind.Array:
-            {
-                var items = value
-                    .EnumerateArray()
-                    .Select(ExtractJsonValue)
-                    .Where(static item => !string.IsNullOrWhiteSpace(item) && item != "-")
-                    .ToList();
-                return items.Count == 0 ? "-" : string.Join(", ", items);
-            }
-
-            case JsonValueKind.Object:
-            {
-                if (TryGetObjectDisplayValue(value, "displayName", out var displayName))
-                {
-                    return displayName;
-                }
-
-                if (TryGetObjectDisplayValue(value, "name", out var name))
-                {
-                    return name;
-                }
-
-                if (TryGetObjectDisplayValue(value, "value", out var optionValue))
-                {
-                    return optionValue;
-                }
-
-                if (TryGetObjectDisplayValue(value, "key", out var key))
-                {
-                    return key;
-                }
-
-                return "-";
-            }
-
-            case JsonValueKind.Null:
-            case JsonValueKind.Undefined:
-                return "-";
-            default:
-                return "-";
-        }
-    }
-
-    private static bool TryGetObjectDisplayValue(JsonElement value, string propertyName, out string result)
-    {
-        result = string.Empty;
-
-        if (!value.TryGetProperty(propertyName, out var propertyValue))
-        {
-            return false;
-        }
-
-        var extracted = ExtractJsonValue(propertyValue);
-        if (string.IsNullOrWhiteSpace(extracted) || extracted == "-")
-        {
-            return false;
-        }
-
-        result = extracted.Trim();
-        return true;
-    }
-
-    private static bool IsDateField(string fieldKey) =>
-        string.Equals(fieldKey, "created", StringComparison.OrdinalIgnoreCase) ||
-        string.Equals(fieldKey, "updated", StringComparison.OrdinalIgnoreCase);
 
     private static string NormalizeFieldKey(string fieldKey) => fieldKey.Trim();
 
@@ -327,28 +200,17 @@ internal sealed class JiraApiClient : IJiraApiClient
 
     private async Task<IReadOnlyDictionary<string, string>> GetFieldAliasesAsync(CancellationToken cancellationToken)
     {
-        IReadOnlyDictionary<string, string>? cachedAliases;
-        lock (_fieldAliasesLock)
+        if (_fieldAliasesByName is not null)
         {
-            cachedAliases = _fieldAliasesByName;
-        }
-
-        if (cachedAliases is not null)
-        {
-            return cachedAliases;
+            return _fieldAliasesByName;
         }
 
         var fields = await _transport
             .GetAsync<List<JiraFieldDefinitionResponse>>(new Uri(FIELD_CATALOG_URL, UriKind.Relative), cancellationToken)
             .ConfigureAwait(false) ?? [];
         var aliases = BuildFieldAliasLookup(fields);
-
-        lock (_fieldAliasesLock)
-        {
-            _fieldAliasesByName ??= aliases;
-
-            return _fieldAliasesByName;
-        }
+        _fieldAliasesByName = aliases;
+        return _fieldAliasesByName;
     }
 
     private static bool TryResolveApiField(
@@ -506,9 +368,9 @@ internal sealed class JiraApiClient : IJiraApiClient
     private static readonly IReadOnlyList<string> _defaultIssueFields =
         ["summary", "status", "issuetype", "assignee", "created", "updated"];
     private const string FIELD_CATALOG_URL = "rest/api/3/field";
-    private readonly object _fieldAliasesLock = new();
     private IReadOnlyDictionary<string, string>? _fieldAliasesByName;
     private sealed record ResolvedRequestedField(string ConfiguredField, string ApiField);
+    private readonly IIssueMapper _issueMapper;
     private readonly IJiraTransport _transport;
     private readonly AppSettings _settings;
 }

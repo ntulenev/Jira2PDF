@@ -3,6 +3,7 @@ using System.Text;
 
 using JiraReport.Abstractions;
 using JiraReport.API;
+using JiraReport.API.Mapping;
 using JiraReport.Logic;
 using JiraReport.Models;
 using JiraReport.Models.Configuration;
@@ -15,8 +16,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
-
-using Spectre.Console;
 
 Console.OutputEncoding = Encoding.UTF8;
 
@@ -33,12 +32,11 @@ builder.Services
 builder.Services.AddSingleton(sp =>
 {
     var source = sp.GetRequiredService<IOptions<JiraOptions>>().Value;
-    var baseUrl = PromptRequired(
+    var baseUrl = GetRequiredSetting(
         "Jira Base URL",
-        source.BaseUrl?.ToString(),
-        "https://your-company.atlassian.net");
-    var email = PromptRequired("Jira Email", source.Email, "your-email@company.com");
-    var apiToken = PromptRequired("Jira API Token", source.ApiToken, "your-jira-api-token", secret: true);
+        source.BaseUrl?.ToString());
+    var email = GetRequiredSetting("Jira Email", source.Email);
+    var apiToken = GetRequiredSetting("Jira API Token", source.ApiToken);
     var reports = ResolveReports(source.Reports);
 
     var settings = new AppSettings(
@@ -65,6 +63,7 @@ builder.Services.AddHttpClient<IJiraTransport, JiraTransport>((sp, http) =>
 
 builder.Services.AddSingleton<ISerializer, SimpleJsonSerializer>();
 builder.Services.AddSingleton<IJiraRetryPolicy, JiraRetryPolicy>();
+builder.Services.AddTransient<IIssueMapper, IssueMapper>();
 builder.Services.AddTransient<IJiraApiClient, JiraApiClient>();
 builder.Services.AddTransient<IJiraLogicService, JiraLogicService>();
 builder.Services.AddTransient<IJiraPresentationService, SpectreJiraPresentationService>();
@@ -78,50 +77,19 @@ using var host = builder.Build();
 var application = host.Services.GetRequiredService<IJiraApplication>();
 await application.RunAsync(CancellationToken.None).ConfigureAwait(false);
 
-static string PromptRequired(string label, string? currentValue, string placeholder, bool secret = false)
+static string GetRequiredSetting(string label, string? currentValue)
 {
-    if (HasConfiguredValue(currentValue, placeholder))
+    if (HasConfiguredValue(currentValue))
     {
         return currentValue!.Trim();
     }
 
-    while (true)
-    {
-        var prompt = new TextPrompt<string>($"{label}:").AllowEmpty();
-        if (secret)
-        {
-            prompt = prompt.Secret('*');
-        }
-
-        var value = AnsiConsole.Prompt(prompt);
-        if (!string.IsNullOrWhiteSpace(value))
-        {
-            return value.Trim();
-        }
-
-        AnsiConsole.MarkupLine($"[red]{Markup.Escape(label)} cannot be empty.[/]");
-    }
+    throw new InvalidOperationException($"{label} is required in appsettings.json.");
 }
 
-static bool HasConfiguredValue(string? value, string placeholder)
+static bool HasConfiguredValue(string? value)
 {
-    if (string.IsNullOrWhiteSpace(value))
-    {
-        return false;
-    }
-
-    var trimmed = value.Trim();
-    if (trimmed.Equals(placeholder, StringComparison.OrdinalIgnoreCase))
-    {
-        return false;
-    }
-
-    if (trimmed.Contains("your-", StringComparison.OrdinalIgnoreCase))
-    {
-        return false;
-    }
-
-    return true;
+    return !string.IsNullOrWhiteSpace(value);
 }
 
 static IReadOnlyList<ReportConfig> ResolveReports(IReadOnlyList<ReportConfigOptions>? sourceReports)
