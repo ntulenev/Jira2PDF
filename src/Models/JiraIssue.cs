@@ -4,17 +4,30 @@ namespace JiraReport.Models;
 /// Represents issue data used in report output.
 /// </summary>
 /// <param name="Key">Issue key.</param>
-/// <param name="Summary">Issue summary text.</param>
-/// <param name="Status">Issue status name.</param>
-/// <param name="IssueType">Issue type name.</param>
-/// <param name="Assignee">Assignee display name.</param>
-/// <param name="Created">Issue creation timestamp.</param>
-/// <param name="Updated">Issue update timestamp.</param>
+/// <param name="Fields">Normalized field values by key.</param>
 internal sealed record JiraIssue(
     string Key,
-    string Summary,
-    string Status,
-    string IssueType,
-    string Assignee,
-    DateTimeOffset? Created,
-    DateTimeOffset? Updated);
+    IReadOnlyDictionary<string, string> Fields)
+{
+    /// <summary>
+    /// Gets normalized field value by key.
+    /// </summary>
+    /// <param name="fieldKey">Field key.</param>
+    /// <returns>Field value or dash if missing.</returns>
+    public string GetFieldValue(string fieldKey)
+    {
+        if (string.IsNullOrWhiteSpace(fieldKey))
+        {
+            return "-";
+        }
+
+        if (string.Equals(fieldKey, "key", StringComparison.OrdinalIgnoreCase))
+        {
+            return Key;
+        }
+
+        return Fields.TryGetValue(fieldKey, out var value) && !string.IsNullOrWhiteSpace(value)
+            ? value.Trim()
+            : "-";
+    }
+}

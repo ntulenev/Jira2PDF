@@ -54,6 +54,9 @@ internal sealed class JiraApplication : IJiraApplication
                 : selectedReportConfig.Jql;
 
             var outputColumns = _jiraLogicService.ResolveOutputColumns(selectedReportConfig?.OutputFields);
+            var requestedIssueFields = _jiraLogicService.ResolveRequestedIssueFields(
+                selectedReportConfig?.OutputFields,
+                selectedReportConfig?.CountFields);
             var reportTitle = _jiraLogicService.ResolveReportTitle(selectedReportConfig);
             var defaultPdfPath = _jiraLogicService.BuildDefaultPdfPath(
                 _settings.DefaultPdfPath,
@@ -67,7 +70,7 @@ internal sealed class JiraApplication : IJiraApplication
                 {
                     setLoadingStatus("Loading issues from Jira...");
                     var issues = await _jiraApiClient
-                        .SearchIssuesAsync(jql, cancellationToken)
+                        .SearchIssuesAsync(jql, requestedIssueFields, cancellationToken)
                         .ConfigureAwait(false);
 
                     setLoadingStatus("Building report data...");

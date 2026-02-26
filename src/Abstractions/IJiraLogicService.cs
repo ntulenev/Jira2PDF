@@ -22,6 +22,16 @@ internal interface IJiraLogicService
     IReadOnlyList<OutputColumn> ResolveOutputColumns(IReadOnlyList<string>? configuredFields);
 
     /// <summary>
+    /// Resolves Jira API fields to request from report field configuration.
+    /// </summary>
+    /// <param name="configuredOutputFields">Configured output field names.</param>
+    /// <param name="configuredCountFields">Configured grouped count field names.</param>
+    /// <returns>Field keys to request from Jira search API.</returns>
+    IReadOnlyList<string> ResolveRequestedIssueFields(
+        IReadOnlyList<string>? configuredOutputFields,
+        IReadOnlyList<string>? configuredCountFields);
+
+    /// <summary>
     /// Builds default output PDF path.
     /// </summary>
     /// <param name="configuredPath">Configured base path.</param>

@@ -117,9 +117,12 @@ Main section: `Jira`
 Each report item supports:
 - `Name`: display name in interactive selector.
 - `Jql`: query to run.
-- `OutputFields`: table columns for console/PDF.
-- `CountFields`: summary table groups to display (defaults to `status`, `issuetype`, `assignee`).
+- `OutputFields`: table columns for console/PDF (order is preserved).
+- `CountFields`: summary table groups to display (order is preserved; defaults to `status`, `issuetype`, `assignee`).
 - `PdfReportName`: optional custom report title/file base name.
+
+Jira API field loading is derived from the union of `OutputFields` and `CountFields`, so only needed fields are requested.
+You can use Jira field names (as in JQL) or field keys (for example `customfield_12345`).
 
 ## Output
 
