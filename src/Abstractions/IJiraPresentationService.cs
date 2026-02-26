@@ -16,13 +16,6 @@ internal interface IJiraPresentationService
     ReportConfig? SelectReportConfig(IReadOnlyList<ReportConfig> sourceReports);
 
     /// <summary>
-    /// Resolves JQL from command line or interactive input.
-    /// </summary>
-    /// <param name="args">Command line args.</param>
-    /// <returns>JQL query text.</returns>
-    string ResolveJql(IReadOnlyList<string> args);
-
-    /// <summary>
     /// Resolves output PDF path from interactive input.
     /// </summary>
     /// <param name="defaultPdfPath">Default output path.</param>

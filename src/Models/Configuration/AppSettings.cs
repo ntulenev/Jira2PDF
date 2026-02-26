@@ -10,7 +10,6 @@ namespace JiraReport.Models.Configuration;
 /// <param name="ApiToken">Jira API token.</param>
 /// <param name="MaxResultsPerPage">Maximum page size for Jira search requests.</param>
 /// <param name="RetryCount">Retry count for transient failures.</param>
-/// <param name="DefaultPdfPath">Default output PDF path.</param>
 /// <param name="Reports">Configured named reports.</param>
 internal sealed record AppSettings(
     JiraBaseUrl BaseUrl,
@@ -18,5 +17,4 @@ internal sealed record AppSettings(
     JiraApiToken ApiToken,
     int MaxResultsPerPage,
     int RetryCount,
-    string DefaultPdfPath,
     IReadOnlyList<ReportConfig> Reports);

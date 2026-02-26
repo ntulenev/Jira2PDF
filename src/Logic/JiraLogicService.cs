@@ -16,12 +16,7 @@ internal sealed class JiraLogicService : IJiraLogicService
             return "Jira JQL Report";
         }
 
-        if (!string.IsNullOrWhiteSpace(selectedReportConfig.PdfReportName))
-        {
-            return selectedReportConfig.PdfReportName.Trim();
-        }
-
-        return selectedReportConfig.Name.Trim();
+        return selectedReportConfig.PdfReportName.Trim();
     }
 
     /// <inheritdoc />
@@ -74,32 +69,16 @@ internal sealed class JiraLogicService : IJiraLogicService
     }
 
     /// <inheritdoc />
-    public string BuildDefaultPdfPath(string configuredPath, string reportTitle, DateTimeOffset generatedAt)
+    public string BuildDefaultPdfPath(string reportTitle, DateTimeOffset generatedAt)
     {
-        var basePath = string.IsNullOrWhiteSpace(configuredPath)
-            ? "jql-report.pdf"
-            : configuredPath.Trim();
-
-        if (!basePath.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase))
+        var sanitizedTitle = SanitizeFileName(reportTitle);
+        if (string.IsNullOrWhiteSpace(sanitizedTitle))
         {
-            basePath += ".pdf";
+            sanitizedTitle = "jql-report";
         }
 
-        var directory = Path.GetDirectoryName(basePath);
-        var extension = Path.GetExtension(basePath);
-        var fallbackName = Path.GetFileNameWithoutExtension(basePath);
-        var selectedName = string.IsNullOrWhiteSpace(reportTitle)
-            ? fallbackName
-            : SanitizeFileName(reportTitle);
-        if (string.IsNullOrWhiteSpace(selectedName))
-        {
-            selectedName = fallbackName;
-        }
-
-        var timestampedFileName = $"{selectedName}_{generatedAt:yyyyMMdd_HHmmss}{extension}";
-        return string.IsNullOrWhiteSpace(directory)
-            ? Path.GetFullPath(timestampedFileName)
-            : Path.GetFullPath(Path.Combine(directory, timestampedFileName));
+        var timestampedFileName = $"{sanitizedTitle}_{generatedAt:yyyyMMdd_HHmmss}.pdf";
+        return Path.GetFullPath(timestampedFileName);
     }
 
     /// <inheritdoc />

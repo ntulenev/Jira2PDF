@@ -47,13 +47,10 @@ builder.Services.AddSingleton(sp =>
         new JiraApiToken(apiToken),
         Math.Clamp(source.MaxResultsPerPage, 1, 100),
         source.RetryCount,
-        string.IsNullOrWhiteSpace(source.DefaultPdfPath) ? "jql-report.pdf" : source.DefaultPdfPath.Trim(),
         reports);
 
     return Options.Create(settings);
 });
-
-builder.Services.AddSingleton<IReadOnlyList<string>>([.. args]);
 
 builder.Services.AddHttpClient<IJiraTransport, JiraTransport>((sp, http) =>
 {
@@ -131,22 +128,26 @@ static IReadOnlyList<ReportConfig> ResolveReports(IReadOnlyList<ReportConfigOpti
 {
     if (sourceReports is null || sourceReports.Count == 0)
     {
-        return [];
+        throw new InvalidOperationException("Jira:Reports must contain at least one report.");
     }
 
     var reports = sourceReports
-        .Where(static report => !string.IsNullOrWhiteSpace(report.Name) && !string.IsNullOrWhiteSpace(report.Jql))
+        .Where(static report =>
+            !string.IsNullOrWhiteSpace(report.Name) &&
+            !string.IsNullOrWhiteSpace(report.Jql) &&
+            !string.IsNullOrWhiteSpace(report.PdfReportName))
         .Select(report => new ReportConfig(
             report.Name!.Trim(),
             report.Jql!.Trim(),
             report.OutputFields is null ? [] : [.. report.OutputFields],
             report.CountFields is null ? [] : [.. report.CountFields],
-            string.IsNullOrWhiteSpace(report.PdfReportName) ? null : report.PdfReportName.Trim()))
+            report.PdfReportName!.Trim()))
         .ToList();
 
     if (reports.Count == 0)
     {
-        throw new InvalidOperationException("Jira:Reports exists but has no valid entries with Name and Jql.");
+        throw new InvalidOperationException(
+            "Jira:Reports exists but has no valid entries with Name, Jql and PdfReportName.");
     }
 
     return reports;

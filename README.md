@@ -11,7 +11,6 @@ Jira2PDF is a .NET 10 console utility that:
 ## Features
 
 - Interactive report selection from `Jira:Reports`.
-- JQL input from CLI args or interactive prompt.
 - Loading UI while data is being prepared (`Preparing report...`, `Preparing PDF...`).
 - Console summary:
   - total issues,
@@ -48,7 +47,7 @@ Jira2PDF is a .NET 10 console utility that:
 dotnet run --project .\src\JiraReport.csproj
 ```
 
-3. Select report config (or enter JQL manually if no reports).
+3. Select report config.
 4. Confirm/change PDF output path.
 5. Get console report + generated PDF file.
 
@@ -67,7 +66,6 @@ Main section: `Jira`
     "ApiToken": "YOUR_JIRA_API_TOKEN",
     "MaxResultsPerPage": 100,
     "RetryCount": 3,
-    "DefaultPdfPath": "jql-report.pdf",
     "Reports": [
       {
         "Name": "Completed Work - January",
@@ -109,8 +107,7 @@ Main section: `Jira`
 - `ApiToken`: Jira API token.
 - `MaxResultsPerPage`: page size for Jira queries (1..100).
 - `RetryCount`: retries for transient failures (0..10).
-- `DefaultPdfPath`: default output PDF path (timestamped file name is generated automatically).
-- `Reports`: optional predefined report configs.
+- `Reports`: required predefined report configs.
 
 ### Reports Settings
 
@@ -119,7 +116,7 @@ Each report item supports:
 - `Jql`: query to run.
 - `OutputFields`: table columns for console/PDF (order is preserved).
 - `CountFields`: summary table groups to display (order is preserved; defaults to `status`, `issuetype`, `assignee`).
-- `PdfReportName`: optional custom report title/file base name.
+- `PdfReportName`: required report title/file base name used for generated PDF name.
 
 Jira API field loading is derived from the union of `OutputFields` and `CountFields`, so only needed fields are requested.
 You can use Jira field names (as in JQL) or field keys (for example `customfield_12345`).

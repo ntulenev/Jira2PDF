@@ -7,10 +7,10 @@ namespace JiraReport.Models;
 /// <param name="Jql">JQL query.</param>
 /// <param name="OutputFields">Requested output fields.</param>
 /// <param name="CountFields">Requested grouped count fields.</param>
-/// <param name="PdfReportName">Optional custom PDF report title.</param>
+/// <param name="PdfReportName">Required PDF report title/file base name.</param>
 internal sealed record ReportConfig(
     string Name,
     string Jql,
     IReadOnlyList<string> OutputFields,
     IReadOnlyList<string> CountFields,
-    string? PdfReportName);
+    string PdfReportName);

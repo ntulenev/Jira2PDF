@@ -38,32 +38,6 @@ internal sealed class SpectreJiraPresentationService : IJiraPresentationService
     }
 
     /// <inheritdoc />
-    public string ResolveJql(IReadOnlyList<string> args)
-    {
-        ArgumentNullException.ThrowIfNull(args);
-
-        if (args.Count > 0)
-        {
-            var jqlFromArgs = string.Join(" ", args).Trim();
-            if (!string.IsNullOrWhiteSpace(jqlFromArgs))
-            {
-                return jqlFromArgs;
-            }
-        }
-
-        while (true)
-        {
-            var jql = AnsiConsole.Prompt(new TextPrompt<string>("Enter JQL:").AllowEmpty());
-            if (!string.IsNullOrWhiteSpace(jql))
-            {
-                return jql.Trim();
-            }
-
-            AnsiConsole.MarkupLine("[red]JQL cannot be empty.[/]");
-        }
-    }
-
-    /// <inheritdoc />
     public string ResolvePdfPath(string defaultPdfPath)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(defaultPdfPath);

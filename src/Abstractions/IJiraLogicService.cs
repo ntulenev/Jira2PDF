@@ -34,11 +34,10 @@ internal interface IJiraLogicService
     /// <summary>
     /// Builds default output PDF path.
     /// </summary>
-    /// <param name="configuredPath">Configured base path.</param>
     /// <param name="reportTitle">Report title.</param>
     /// <param name="generatedAt">Generation timestamp.</param>
     /// <returns>Default output path.</returns>
-    string BuildDefaultPdfPath(string configuredPath, string reportTitle, DateTimeOffset generatedAt);
+    string BuildDefaultPdfPath(string reportTitle, DateTimeOffset generatedAt);
 
     /// <summary>
     /// Builds report aggregate model.

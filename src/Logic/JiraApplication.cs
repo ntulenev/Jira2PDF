@@ -15,28 +15,24 @@ internal sealed class JiraApplication : IJiraApplication
     /// Initializes a new instance of the <see cref="JiraApplication"/> class.
     /// </summary>
     /// <param name="options">Application settings options.</param>
-    /// <param name="args">Command line arguments.</param>
     /// <param name="jiraApiClient">Jira API client.</param>
     /// <param name="jiraLogicService">Domain logic service.</param>
     /// <param name="jiraPresentationService">Presentation service.</param>
     /// <param name="pdfReportRenderer">PDF report renderer.</param>
     public JiraApplication(
         IOptions<AppSettings> options,
-        IReadOnlyList<string> args,
         IJiraApiClient jiraApiClient,
         IJiraLogicService jiraLogicService,
         IJiraPresentationService jiraPresentationService,
         IPdfReportRenderer pdfReportRenderer)
     {
         ArgumentNullException.ThrowIfNull(options);
-        ArgumentNullException.ThrowIfNull(args);
         ArgumentNullException.ThrowIfNull(jiraApiClient);
         ArgumentNullException.ThrowIfNull(jiraLogicService);
         ArgumentNullException.ThrowIfNull(jiraPresentationService);
         ArgumentNullException.ThrowIfNull(pdfReportRenderer);
 
         _settings = options.Value;
-        _args = args;
         _jiraApiClient = jiraApiClient;
         _jiraLogicService = jiraLogicService;
         _jiraPresentationService = jiraPresentationService;
@@ -49,19 +45,20 @@ internal sealed class JiraApplication : IJiraApplication
         try
         {
             var selectedReportConfig = _jiraPresentationService.SelectReportConfig(_settings.Reports);
-            var jql = selectedReportConfig is null
-                ? _jiraPresentationService.ResolveJql(_args)
-                : selectedReportConfig.Jql;
+            if (selectedReportConfig is null)
+            {
+                throw new InvalidOperationException(
+                    "No reports are configured. Add at least one item under Jira:Reports in appsettings.json.");
+            }
 
-            var outputColumns = _jiraLogicService.ResolveOutputColumns(selectedReportConfig?.OutputFields);
+            var jql = selectedReportConfig.Jql;
+
+            var outputColumns = _jiraLogicService.ResolveOutputColumns(selectedReportConfig.OutputFields);
             var requestedIssueFields = _jiraLogicService.ResolveRequestedIssueFields(
-                selectedReportConfig?.OutputFields,
-                selectedReportConfig?.CountFields);
+                selectedReportConfig.OutputFields,
+                selectedReportConfig.CountFields);
             var reportTitle = _jiraLogicService.ResolveReportTitle(selectedReportConfig);
-            var defaultPdfPath = _jiraLogicService.BuildDefaultPdfPath(
-                _settings.DefaultPdfPath,
-                reportTitle,
-                DateTimeOffset.Now);
+            var defaultPdfPath = _jiraLogicService.BuildDefaultPdfPath(reportTitle, DateTimeOffset.Now);
             var outputPath = _jiraPresentationService.ResolvePdfPath(defaultPdfPath);
 
             var report = await _jiraPresentationService.RunLoadingAsync(
@@ -76,10 +73,10 @@ internal sealed class JiraApplication : IJiraApplication
                     setLoadingStatus("Building report data...");
                     return _jiraLogicService.BuildReport(
                         reportTitle,
-                        selectedReportConfig?.Name,
+                        selectedReportConfig.Name,
                         jql,
                         issues,
-                        selectedReportConfig?.CountFields);
+                        selectedReportConfig.CountFields);
                 }).ConfigureAwait(false);
 
             _jiraPresentationService.ShowReport(report, outputColumns);
@@ -114,7 +111,6 @@ internal sealed class JiraApplication : IJiraApplication
     }
 
     private readonly AppSettings _settings;
-    private readonly IReadOnlyList<string> _args;
     private readonly IJiraApiClient _jiraApiClient;
     private readonly IJiraLogicService _jiraLogicService;
     private readonly IJiraPresentationService _jiraPresentationService;

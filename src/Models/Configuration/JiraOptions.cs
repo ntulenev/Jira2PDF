@@ -35,11 +35,6 @@ internal sealed class JiraOptions
     public int RetryCount { get; init; } = 3;
 
     /// <summary>
-    /// Gets default PDF output path.
-    /// </summary>
-    public string? DefaultPdfPath { get; init; }
-
-    /// <summary>
     /// Gets named report configurations.
     /// </summary>
     public IReadOnlyList<ReportConfigOptions>? Reports { get; init; }
@@ -71,7 +66,7 @@ internal sealed class ReportConfigOptions
     public IReadOnlyList<string>? CountFields { get; init; }
 
     /// <summary>
-    /// Gets optional custom PDF report title.
+    /// Gets required PDF report title/file base name.
     /// </summary>
     public string? PdfReportName { get; init; }
 }
