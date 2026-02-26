@@ -43,14 +43,14 @@ internal interface IJiraLogicService
     /// Builds report aggregate model.
     /// </summary>
     /// <param name="reportTitle">Report title.</param>
-    /// <param name="configName">Optional config name.</param>
+    /// <param name="configName">Configuration name.</param>
     /// <param name="jql">JQL query.</param>
     /// <param name="issues">Loaded issues.</param>
     /// <param name="configuredCountFields">Configured grouped count fields.</param>
     /// <returns>Prepared report model.</returns>
     JiraJqlReport BuildReport(
         string reportTitle,
-        string? configName,
+        string configName,
         string jql,
         IReadOnlyList<JiraIssue> issues,
         IReadOnlyList<string>? configuredCountFields);

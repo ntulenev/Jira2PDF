@@ -31,7 +31,6 @@ internal sealed class JiraLogicService : IJiraLogicService
             columns.Add(new OutputColumn(
                 key,
                 BuildFieldHeader(key),
-                ResolveConsoleWidth(key),
                 issue => issue.GetFieldValue(key)));
         }
 
@@ -84,15 +83,16 @@ internal sealed class JiraLogicService : IJiraLogicService
     /// <inheritdoc />
     public JiraJqlReport BuildReport(
         string reportTitle,
-        string? configName,
+        string configName,
         string jql,
         IReadOnlyList<JiraIssue> issues,
         IReadOnlyList<string>? configuredCountFields)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(configName);
         ArgumentNullException.ThrowIfNull(issues);
 
         var countTables = ResolveCountTables(issues, configuredCountFields);
-        return JiraJqlReport.Create(reportTitle, configName, jql, issues, countTables, DateTimeOffset.Now);
+        return new JiraJqlReport(reportTitle, configName, jql, DateTimeOffset.Now, issues, countTables);
     }
 
     private static List<CountTable> ResolveCountTables(
@@ -190,9 +190,6 @@ internal sealed class JiraLogicService : IJiraLogicService
 
         return string.Join(' ', headerWords);
     }
-
-    private static int ResolveConsoleWidth(string fieldKey) =>
-        string.Equals(fieldKey, "summary", StringComparison.OrdinalIgnoreCase) ? 52 : 20;
 
     private static string SanitizeFileName(string value)
     {

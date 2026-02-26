@@ -76,10 +76,7 @@ internal sealed class SpectreJiraPresentationService : IJiraPresentationService
                 .LeftJustified());
 
         AnsiConsole.MarkupLine($"[grey]Generated:[/] {report.GeneratedAt:yyyy-MM-dd HH:mm:ss zzz}");
-        if (!string.IsNullOrWhiteSpace(report.ConfigName))
-        {
-            AnsiConsole.MarkupLine($"[grey]Config:[/] {Markup.Escape(report.ConfigName)}");
-        }
+        AnsiConsole.MarkupLine($"[grey]Config:[/] {Markup.Escape(report.ConfigName)}");
 
         AnsiConsole.MarkupLine($"[grey]JQL:[/] {Markup.Escape(report.Jql)}");
         AnsiConsole.MarkupLine($"[grey]Total issues:[/] {report.Issues.Count.ToString(CultureInfo.InvariantCulture)}");
@@ -170,7 +167,9 @@ internal sealed class SpectreJiraPresentationService : IJiraPresentationService
         var table = new Table().RoundedBorder().BorderColor(Color.Grey);
         foreach (var outputColumn in outputColumns)
         {
-            _ = table.AddColumn($"[bold]{Markup.Escape(outputColumn.Header)}[/]");
+            _ = table.AddColumn(
+                new TableColumn($"[bold]{Markup.Escape(outputColumn.Header)}[/]")
+                    .Width(ResolveConsoleWidth(outputColumn.Key)));
         }
 
         var shownIssuesCount = 0;
@@ -194,6 +193,9 @@ internal sealed class SpectreJiraPresentationService : IJiraPresentationService
                 $"[grey]Showing first {shownIssuesCount} issues in console. Full list is included in PDF.[/]");
         }
     }
+
+    private static int ResolveConsoleWidth(string fieldKey) =>
+        string.Equals(fieldKey, "summary", StringComparison.OrdinalIgnoreCase) ? 52 : 20;
 
     private const int CONSOLE_ISSUE_LIMIT = 50;
 }
