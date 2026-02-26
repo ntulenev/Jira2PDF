@@ -8,8 +8,12 @@ using Spectre.Console;
 
 namespace JiraReport.Presentation;
 
+/// <summary>
+/// Spectre.Console based UI implementation.
+/// </summary>
 internal sealed class SpectreJiraPresentationService : IJiraPresentationService
 {
+    /// <inheritdoc />
     public ReportConfig? SelectReportConfig(IReadOnlyList<ReportConfig> sourceReports)
     {
         ArgumentNullException.ThrowIfNull(sourceReports);
@@ -33,6 +37,7 @@ internal sealed class SpectreJiraPresentationService : IJiraPresentationService
         return nameToConfig[selectedName];
     }
 
+    /// <inheritdoc />
     public string ResolveJql(IReadOnlyList<string> args)
     {
         ArgumentNullException.ThrowIfNull(args);
@@ -58,6 +63,7 @@ internal sealed class SpectreJiraPresentationService : IJiraPresentationService
         }
     }
 
+    /// <inheritdoc />
     public string ResolvePdfPath(string defaultPdfPath)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(defaultPdfPath);
@@ -83,6 +89,7 @@ internal sealed class SpectreJiraPresentationService : IJiraPresentationService
         return selectedPath;
     }
 
+    /// <inheritdoc />
     public void ShowReport(JiraJqlReport report, IReadOnlyList<OutputColumn> outputColumns)
     {
         ArgumentNullException.ThrowIfNull(report);
@@ -109,6 +116,7 @@ internal sealed class SpectreJiraPresentationService : IJiraPresentationService
         ShowIssuesTable(report.Issues, outputColumns);
     }
 
+    /// <inheritdoc />
     public void ShowPdfSaved(string pdfPath)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(pdfPath);
@@ -116,9 +124,11 @@ internal sealed class SpectreJiraPresentationService : IJiraPresentationService
         AnsiConsole.MarkupLine($"[green]PDF report saved to:[/] {Markup.Escape(pdfPath)}");
     }
 
+    /// <inheritdoc />
     public void ShowError(ErrorMessage errorMessage) =>
         AnsiConsole.MarkupLine($"[red]Failed to generate Jira report:[/] {Markup.Escape(errorMessage.Value)}");
 
+    /// <inheritdoc />
     public async Task<T> RunLoadingAsync<T>(string title, Func<Action<string>, Task<T>> action)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(title);
@@ -144,6 +154,7 @@ internal sealed class SpectreJiraPresentationService : IJiraPresentationService
             .ConfigureAwait(false);
     }
 
+    /// <inheritdoc />
     public async Task RunLoadingAsync(string title, Func<Action<string>, Task> action)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(title);

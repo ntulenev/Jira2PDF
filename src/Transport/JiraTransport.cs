@@ -2,8 +2,17 @@ using JiraReport.Abstractions;
 
 namespace JiraReport.Transport;
 
+/// <summary>
+/// HTTP transport implementation with retry support.
+/// </summary>
 internal sealed class JiraTransport : IJiraTransport
 {
+    /// <summary>
+    /// Initializes a new instance of the <see cref="JiraTransport"/> class.
+    /// </summary>
+    /// <param name="http">HTTP client instance.</param>
+    /// <param name="retryPolicy">Retry policy.</param>
+    /// <param name="serializer">JSON serializer.</param>
     public JiraTransport(HttpClient http, IJiraRetryPolicy retryPolicy, ISerializer serializer)
     {
         ArgumentNullException.ThrowIfNull(http);
@@ -15,6 +24,7 @@ internal sealed class JiraTransport : IJiraTransport
         _serializer = serializer;
     }
 
+    /// <inheritdoc />
     public async Task<TDto?> GetAsync<TDto>(Uri url, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(url);

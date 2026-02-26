@@ -6,8 +6,20 @@ using Microsoft.Extensions.Options;
 
 namespace JiraReport.Logic;
 
+/// <summary>
+/// Orchestrates full report workflow from input to PDF output.
+/// </summary>
 internal sealed class JiraApplication : IJiraApplication
 {
+    /// <summary>
+    /// Initializes a new instance of the <see cref="JiraApplication"/> class.
+    /// </summary>
+    /// <param name="options">Application settings options.</param>
+    /// <param name="args">Command line arguments.</param>
+    /// <param name="jiraApiClient">Jira API client.</param>
+    /// <param name="jiraLogicService">Domain logic service.</param>
+    /// <param name="jiraPresentationService">Presentation service.</param>
+    /// <param name="pdfReportRenderer">PDF report renderer.</param>
     public JiraApplication(
         IOptions<AppSettings> options,
         IReadOnlyList<string> args,
@@ -31,6 +43,7 @@ internal sealed class JiraApplication : IJiraApplication
         _pdfReportRenderer = pdfReportRenderer;
     }
 
+    /// <inheritdoc />
     public async Task RunAsync(CancellationToken cancellationToken = default)
     {
         try

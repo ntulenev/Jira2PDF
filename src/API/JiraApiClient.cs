@@ -10,8 +10,16 @@ using Microsoft.Extensions.Options;
 
 namespace JiraReport.API;
 
+/// <summary>
+/// Jira API client implementation for issue search operations.
+/// </summary>
 internal sealed class JiraApiClient : IJiraApiClient
 {
+    /// <summary>
+    /// Initializes a new instance of the <see cref="JiraApiClient"/> class.
+    /// </summary>
+    /// <param name="transport">HTTP transport abstraction.</param>
+    /// <param name="options">Application settings options.</param>
     public JiraApiClient(IJiraTransport transport, IOptions<AppSettings> options)
     {
         ArgumentNullException.ThrowIfNull(transport);
@@ -21,6 +29,7 @@ internal sealed class JiraApiClient : IJiraApiClient
         _settings = options.Value;
     }
 
+    /// <inheritdoc />
     public async Task<IReadOnlyList<JiraIssue>> SearchIssuesAsync(string jql, CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(jql);

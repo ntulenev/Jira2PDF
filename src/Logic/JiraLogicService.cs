@@ -5,8 +5,12 @@ using JiraReport.Models;
 
 namespace JiraReport.Logic;
 
+/// <summary>
+/// Default domain logic implementation for report preparation.
+/// </summary>
 internal sealed class JiraLogicService : IJiraLogicService
 {
+    /// <inheritdoc />
     public string ResolveReportTitle(ReportConfig? selectedReportConfig)
     {
         if (selectedReportConfig is null)
@@ -22,6 +26,7 @@ internal sealed class JiraLogicService : IJiraLogicService
         return selectedReportConfig.Name.Trim();
     }
 
+    /// <inheritdoc />
     public IReadOnlyList<OutputColumn> ResolveOutputColumns(IReadOnlyList<string>? configuredFields)
     {
         var fields = configuredFields is { Count: > 0 } ? configuredFields : _defaultOutputOrder;
@@ -56,6 +61,7 @@ internal sealed class JiraLogicService : IJiraLogicService
         return [.. _defaultOutputOrder.Select(static field => _columns[field])];
     }
 
+    /// <inheritdoc />
     public string BuildDefaultPdfPath(string configuredPath, string reportTitle, DateTimeOffset generatedAt)
     {
         var basePath = string.IsNullOrWhiteSpace(configuredPath)
@@ -84,6 +90,7 @@ internal sealed class JiraLogicService : IJiraLogicService
             : Path.GetFullPath(Path.Combine(directory, timestampedFileName));
     }
 
+    /// <inheritdoc />
     public JiraJqlReport BuildReport(
         string reportTitle,
         string? configName,

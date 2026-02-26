@@ -2,32 +2,71 @@ using System.ComponentModel.DataAnnotations;
 
 namespace JiraReport.Models.Configuration;
 
+/// <summary>
+/// Represents raw configuration values from the <c>Jira</c> section.
+/// </summary>
 internal sealed class JiraOptions
 {
+    /// <summary>
+    /// Gets Jira base URL.
+    /// </summary>
     public Uri? BaseUrl { get; init; }
 
+    /// <summary>
+    /// Gets Jira user email.
+    /// </summary>
     public string? Email { get; init; }
 
+    /// <summary>
+    /// Gets Jira API token.
+    /// </summary>
     public string? ApiToken { get; init; }
 
+    /// <summary>
+    /// Gets maximum page size for Jira search calls.
+    /// </summary>
     [Range(1, 100)]
     public int MaxResultsPerPage { get; init; } = 100;
 
+    /// <summary>
+    /// Gets retry count for transient request failures.
+    /// </summary>
     [Range(0, 10)]
     public int RetryCount { get; init; } = 3;
 
+    /// <summary>
+    /// Gets default PDF output path.
+    /// </summary>
     public string? DefaultPdfPath { get; init; }
 
+    /// <summary>
+    /// Gets named report configurations.
+    /// </summary>
     public IReadOnlyList<ReportConfigOptions>? Reports { get; init; }
 }
 
+/// <summary>
+/// Represents one raw report config entry from configuration.
+/// </summary>
 internal sealed class ReportConfigOptions
 {
+    /// <summary>
+    /// Gets config name.
+    /// </summary>
     public string? Name { get; init; }
 
+    /// <summary>
+    /// Gets config JQL query.
+    /// </summary>
     public string? Jql { get; init; }
 
+    /// <summary>
+    /// Gets requested output fields.
+    /// </summary>
     public IReadOnlyList<string>? OutputFields { get; init; }
 
+    /// <summary>
+    /// Gets optional custom PDF report title.
+    /// </summary>
     public string? PdfReportName { get; init; }
 }

@@ -11,8 +11,16 @@ using QLicenseType = QuestPDF.Infrastructure.LicenseType;
 
 namespace JiraReport.Presentation.Pdf;
 
+/// <summary>
+/// QuestPDF-based renderer for report PDF output.
+/// </summary>
 internal sealed class QuestPdfReportRenderer : IPdfReportRenderer
 {
+    /// <summary>
+    /// Initializes a new instance of the <see cref="QuestPdfReportRenderer"/> class.
+    /// </summary>
+    /// <param name="pdfReportFileStore">PDF file store abstraction.</param>
+    /// <param name="pdfContentComposer">PDF content composer.</param>
     public QuestPdfReportRenderer(IPdfReportFileStore pdfReportFileStore, IPdfContentComposer pdfContentComposer)
     {
         ArgumentNullException.ThrowIfNull(pdfReportFileStore);
@@ -22,6 +30,7 @@ internal sealed class QuestPdfReportRenderer : IPdfReportRenderer
         _pdfContentComposer = pdfContentComposer;
     }
 
+    /// <inheritdoc />
     public void RenderReport(
         JiraJqlReport report,
         JiraBaseUrl baseUrl,

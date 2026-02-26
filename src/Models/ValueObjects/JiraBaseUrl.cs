@@ -1,7 +1,14 @@
 namespace JiraReport.Models.ValueObjects;
 
+/// <summary>
+/// Represents validated Jira base URL value.
+/// </summary>
 internal readonly record struct JiraBaseUrl
 {
+    /// <summary>
+    /// Initializes a new <see cref="JiraBaseUrl"/> instance.
+    /// </summary>
+    /// <param name="value">Raw base URL string.</param>
     public JiraBaseUrl(string value)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(value);
@@ -20,7 +27,14 @@ internal readonly record struct JiraBaseUrl
         Value = parsed.GetLeftPart(UriPartial.Authority).TrimEnd('/');
     }
 
+    /// <summary>
+    /// Gets normalized base URL text.
+    /// </summary>
     public string Value { get; }
 
+    /// <summary>
+    /// Returns URL text representation.
+    /// </summary>
+    /// <returns>Normalized URL text.</returns>
     public override string ToString() => Value;
 }

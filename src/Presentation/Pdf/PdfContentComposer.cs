@@ -10,8 +10,12 @@ using QuestPDF.Infrastructure;
 
 namespace JiraReport.Presentation.Pdf;
 
+/// <summary>
+/// Composes PDF report content sections.
+/// </summary>
 internal sealed class PdfContentComposer : IPdfContentComposer
 {
+    /// <inheritdoc />
     public void ComposeContent(
         ColumnDescriptor column,
         JiraJqlReport report,

@@ -7,14 +7,22 @@ using Microsoft.Extensions.Options;
 
 namespace JiraReport.Transport;
 
+/// <summary>
+/// Default retry policy for Jira transport calls.
+/// </summary>
 internal sealed class JiraRetryPolicy : IJiraRetryPolicy
 {
+    /// <summary>
+    /// Initializes a new instance of the <see cref="JiraRetryPolicy"/> class.
+    /// </summary>
+    /// <param name="options">Application settings options.</param>
     public JiraRetryPolicy(IOptions<AppSettings> options)
     {
         ArgumentNullException.ThrowIfNull(options);
         _settings = options.Value;
     }
 
+    /// <inheritdoc />
     public bool TryGetDelay(int retryAttempt, HttpStatusCode? statusCode, Exception? exception, out TimeSpan delay)
     {
         if (retryAttempt <= 0 || retryAttempt > _settings.RetryCount)

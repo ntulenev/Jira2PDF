@@ -5,8 +5,12 @@ using QuestPDF.Infrastructure;
 
 namespace JiraReport.Presentation.Pdf;
 
+/// <summary>
+/// Saves generated PDF documents to filesystem.
+/// </summary>
 internal sealed class PdfReportFileStore : IPdfReportFileStore
 {
+    /// <inheritdoc />
     public void Save(string outputPath, IDocument document)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(outputPath);
