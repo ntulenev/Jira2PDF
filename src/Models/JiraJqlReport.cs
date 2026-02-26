@@ -18,18 +18,17 @@ internal sealed record JiraJqlReport
     /// <param name="countTables">Prepared grouped summary tables.</param>
     public JiraJqlReport(
         PdfReportName title,
-        string configName,
+        ReportName configName,
         JqlQuery jql,
         DateTimeOffset generatedAt,
         IReadOnlyList<JiraIssue> issues,
         IReadOnlyList<CountTable> countTables)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(configName);
         ArgumentNullException.ThrowIfNull(issues);
         ArgumentNullException.ThrowIfNull(countTables);
 
         Title = title;
-        ConfigName = configName.Trim();
+        ConfigName = configName;
         Jql = jql;
         GeneratedAt = generatedAt;
         Issues = issues;
@@ -44,7 +43,7 @@ internal sealed record JiraJqlReport
     /// <summary>
     /// Gets configuration name.
     /// </summary>
-    public string ConfigName { get; }
+    public ReportName ConfigName { get; }
 
     /// <summary>
     /// Gets JQL query used for loading.

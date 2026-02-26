@@ -16,17 +16,16 @@ internal sealed record ReportConfig
     /// <param name="countFields">Requested grouped count fields.</param>
     /// <param name="pdfReportName">Required PDF report title/file base name.</param>
     public ReportConfig(
-        string name,
+        ReportName name,
         JqlQuery jql,
         IReadOnlyList<IssueFieldName> outputFields,
         IReadOnlyList<IssueFieldName> countFields,
         PdfReportName pdfReportName)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(name);
         ArgumentNullException.ThrowIfNull(outputFields);
         ArgumentNullException.ThrowIfNull(countFields);
 
-        Name = name.Trim();
+        Name = name;
         Jql = jql;
         OutputFields = [.. outputFields];
         CountFields = [.. countFields];
@@ -36,7 +35,7 @@ internal sealed record ReportConfig
     /// <summary>
     /// Gets configuration name.
     /// </summary>
-    public string Name { get; }
+    public ReportName Name { get; }
 
     /// <summary>
     /// Gets JQL query.

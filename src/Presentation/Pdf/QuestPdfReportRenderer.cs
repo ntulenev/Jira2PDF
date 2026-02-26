@@ -60,7 +60,7 @@ internal sealed class QuestPdfReportRenderer : IPdfReportRenderer
                             CultureInfo.InvariantCulture,
                             "Generated: {0:yyyy-MM-dd HH:mm:ss zzz}",
                             report.GeneratedAt));
-                    _ = column.Item().Text("Config: " + report.ConfigName);
+                    _ = column.Item().Text("Config: " + report.ConfigName.Value);
 
                     _ = column.Item().Text("JQL: " + report.Jql.Value);
                     _ = column.Item().Text("Total issues: " + report.Issues.Count.ToString(CultureInfo.InvariantCulture));

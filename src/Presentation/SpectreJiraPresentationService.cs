@@ -24,8 +24,8 @@ internal sealed class SpectreJiraPresentationService : IJiraPresentationService
         }
 
         var nameToConfig = sourceReports
-            .OrderBy(static report => report.Name, StringComparer.OrdinalIgnoreCase)
-            .ToDictionary(static report => report.Name, static report => report, StringComparer.OrdinalIgnoreCase);
+            .OrderBy(static report => report.Name.Value, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(static report => report.Name.Value, static report => report, StringComparer.OrdinalIgnoreCase);
 
         var selectedName = AnsiConsole.Prompt(
             new SelectionPrompt<string>()
@@ -76,7 +76,7 @@ internal sealed class SpectreJiraPresentationService : IJiraPresentationService
                 .LeftJustified());
 
         AnsiConsole.MarkupLine($"[grey]Generated:[/] {report.GeneratedAt:yyyy-MM-dd HH:mm:ss zzz}");
-        AnsiConsole.MarkupLine($"[grey]Config:[/] {Markup.Escape(report.ConfigName)}");
+        AnsiConsole.MarkupLine($"[grey]Config:[/] {Markup.Escape(report.ConfigName.Value)}");
 
         AnsiConsole.MarkupLine($"[grey]JQL:[/] {Markup.Escape(report.Jql.Value)}");
         AnsiConsole.MarkupLine($"[grey]Total issues:[/] {report.Issues.Count.ToString(CultureInfo.InvariantCulture)}");

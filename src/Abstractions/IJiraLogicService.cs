@@ -44,7 +44,7 @@ internal interface IJiraLogicService
     /// <returns>Prepared report model.</returns>
     JiraJqlReport BuildReport(
         PdfReportName reportTitle,
-        string configName,
+        ReportName configName,
         JqlQuery jql,
         IReadOnlyList<JiraIssue> issues,
         IReadOnlyList<IssueFieldName>? configuredCountFields);

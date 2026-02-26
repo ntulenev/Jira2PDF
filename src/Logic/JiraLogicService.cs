@@ -74,12 +74,11 @@ internal sealed class JiraLogicService : IJiraLogicService
     /// <inheritdoc />
     public JiraJqlReport BuildReport(
         PdfReportName reportTitle,
-        string configName,
+        ReportName configName,
         JqlQuery jql,
         IReadOnlyList<JiraIssue> issues,
         IReadOnlyList<IssueFieldName>? configuredCountFields)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(configName);
         ArgumentNullException.ThrowIfNull(issues);
 
         var countTables = ResolveCountTables(issues, configuredCountFields);
