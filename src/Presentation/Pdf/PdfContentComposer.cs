@@ -92,7 +92,7 @@ internal sealed class PdfContentComposer : IPdfContentComposer
             {
                 foreach (var column in outputColumns)
                 {
-                    _ = header.Cell().Element(PdfPresentationHelpers.StyleHeaderCell).Text(column.Header);
+                    _ = header.Cell().Element(PdfPresentationHelpers.StyleHeaderCell).Text(column.Header.Value);
                 }
             });
 

@@ -159,7 +159,7 @@ internal sealed class SpectreJiraPresentationService : IJiraPresentationService
         foreach (var outputColumn in outputColumns)
         {
             _ = table.AddColumn(
-                new TableColumn($"[bold]{Markup.Escape(outputColumn.Header)}[/]")
+                new TableColumn($"[bold]{Markup.Escape(outputColumn.Header.Value)}[/]")
                     .Width(ResolveConsoleWidth(outputColumn.Key)));
         }
 

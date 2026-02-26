@@ -13,13 +13,12 @@ internal sealed record OutputColumn
     /// <param name="key">Column key.</param>
     /// <param name="header">Displayed header label.</param>
     /// <param name="selector">Value selector for an issue row.</param>
-    public OutputColumn(IssueKey key, string header, Func<JiraIssue, FieldValue> selector)
+    public OutputColumn(IssueKey key, OutputColumnHeader header, Func<JiraIssue, FieldValue> selector)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(header);
         ArgumentNullException.ThrowIfNull(selector);
 
         Key = key;
-        Header = header.Trim();
+        Header = header;
         Selector = selector;
     }
 
@@ -31,7 +30,7 @@ internal sealed record OutputColumn
     /// <summary>
     /// Gets displayed header label.
     /// </summary>
-    public string Header { get; }
+    public OutputColumnHeader Header { get; }
 
     /// <summary>
     /// Gets value selector for an issue row.

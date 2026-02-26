@@ -21,7 +21,7 @@ internal sealed class JiraLogicService : IJiraLogicService
             var issueFieldKey = new IssueKey(key);
             columns.Add(new OutputColumn(
                 issueFieldKey,
-                BuildFieldHeader(key),
+                OutputColumnHeader.FromFieldKey(key),
                 issue => issue.GetFieldValue(issueFieldKey)));
         }
 
@@ -60,16 +60,7 @@ internal sealed class JiraLogicService : IJiraLogicService
 
     /// <inheritdoc />
     public PdfFilePath BuildDefaultPdfPath(PdfReportName reportTitle, DateTimeOffset generatedAt)
-    {
-        var sanitizedTitle = SanitizeFileName(reportTitle.Value);
-        if (string.IsNullOrWhiteSpace(sanitizedTitle))
-        {
-            sanitizedTitle = "jql-report";
-        }
-
-        var timestampedFileName = $"{sanitizedTitle}_{generatedAt:yyyyMMdd_HHmmss}.pdf";
-        return new PdfFilePath(Path.GetFullPath(timestampedFileName));
-    }
+        => PdfFilePath.FromReportTitle(reportTitle, generatedAt);
 
     /// <inheritdoc />
     public JiraJqlReport BuildReport(
@@ -96,7 +87,7 @@ internal sealed class JiraLogicService : IJiraLogicService
         {
             var issueFieldKey = new IssueKey(countFieldKey.Value);
             tables.Add(new CountTable(
-                $"By {BuildFieldHeader(countFieldKey.Value)}",
+                $"By {OutputColumnHeader.FromFieldKey(countFieldKey.Value).Value}",
                 GroupByCount(issues, issue => issue.GetFieldValue(issueFieldKey))));
         }
 
@@ -155,46 +146,6 @@ internal sealed class JiraLogicService : IJiraLogicService
         }
 
         return [.. defaultFields];
-    }
-
-    private static string BuildFieldHeader(string fieldKey)
-    {
-        if (string.IsNullOrWhiteSpace(fieldKey))
-        {
-            return "Field";
-        }
-
-        var words = fieldKey
-            .Trim()
-            .Replace('_', ' ')
-            .Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        if (words.Length == 0)
-        {
-            return "Field";
-        }
-
-        var headerWords = new List<string>(words.Length);
-        foreach (var word in words)
-        {
-            var characters = word.ToCharArray();
-            characters[0] = char.ToUpperInvariant(characters[0]);
-            headerWords.Add(new string(characters));
-        }
-
-        return string.Join(' ', headerWords);
-    }
-
-    private static string SanitizeFileName(string value)
-    {
-        var invalidChars = Path.GetInvalidFileNameChars();
-        var sanitized = new string([.. value
-            .Trim()
-            .Select(ch => invalidChars.Contains(ch) ? '_' : ch)
-        ]);
-
-        return string.IsNullOrWhiteSpace(sanitized)
-            ? string.Empty
-            : sanitized.Replace(' ', '_');
     }
 
     private static readonly IReadOnlyList<IssueFieldName> _defaultOutputOrder =
