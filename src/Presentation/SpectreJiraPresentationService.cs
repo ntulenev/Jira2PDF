@@ -38,16 +38,14 @@ internal sealed class SpectreJiraPresentationService : IJiraPresentationService
     }
 
     /// <inheritdoc />
-    public string ResolvePdfPath(string defaultPdfPath)
+    public PdfFilePath ResolvePdfPath(PdfFilePath defaultPdfPath)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(defaultPdfPath);
-
         var selectedPath = AnsiConsole.Prompt(
-            new TextPrompt<string>($"PDF output path (default: {Markup.Escape(defaultPdfPath)}):")
+            new TextPrompt<string>($"PDF output path (default: {Markup.Escape(defaultPdfPath.Value)}):")
                 .AllowEmpty())
             .Trim();
 
-        selectedPath = string.IsNullOrWhiteSpace(selectedPath) ? defaultPdfPath : selectedPath;
+        selectedPath = string.IsNullOrWhiteSpace(selectedPath) ? defaultPdfPath.Value : selectedPath;
         if (!selectedPath.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase))
         {
             selectedPath += ".pdf";
@@ -60,7 +58,7 @@ internal sealed class SpectreJiraPresentationService : IJiraPresentationService
             _ = Directory.CreateDirectory(directory);
         }
 
-        return selectedPath;
+        return new PdfFilePath(selectedPath);
     }
 
     /// <inheritdoc />
@@ -90,11 +88,10 @@ internal sealed class SpectreJiraPresentationService : IJiraPresentationService
     }
 
     /// <inheritdoc />
-    public void ShowPdfSaved(string pdfPath)
+    public void ShowPdfSaved(PdfFilePath pdfPath)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(pdfPath);
         AnsiConsole.WriteLine();
-        AnsiConsole.MarkupLine($"[green]PDF report saved to:[/] {Markup.Escape(pdfPath)}");
+        AnsiConsole.MarkupLine($"[green]PDF report saved to:[/] {Markup.Escape(pdfPath.Value)}");
     }
 
     /// <inheritdoc />

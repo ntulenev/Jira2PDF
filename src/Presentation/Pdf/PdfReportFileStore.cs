@@ -1,4 +1,5 @@
 using JiraReport.Abstractions;
+using JiraReport.Models.ValueObjects;
 
 using QuestPDF.Fluent;
 using QuestPDF.Infrastructure;
@@ -11,18 +12,18 @@ namespace JiraReport.Presentation.Pdf;
 internal sealed class PdfReportFileStore : IPdfReportFileStore
 {
     /// <inheritdoc />
-    public void Save(string outputPath, IDocument document)
+    public void Save(PdfFilePath outputPath, IDocument document)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(outputPath);
         ArgumentNullException.ThrowIfNull(document);
 
-        var directory = Path.GetDirectoryName(outputPath);
+        var path = outputPath.Value;
+        var directory = Path.GetDirectoryName(path);
         if (!string.IsNullOrWhiteSpace(directory))
         {
             _ = Directory.CreateDirectory(directory);
         }
 
         var pdfBytes = document.GeneratePdf();
-        File.WriteAllBytes(outputPath, pdfBytes);
+        File.WriteAllBytes(path, pdfBytes);
     }
 }

@@ -18,6 +18,6 @@ internal interface IPdfReportRenderer
     void RenderReport(
         JiraJqlReport report,
         JiraBaseUrl baseUrl,
-        string outputPath,
+        PdfFilePath outputPath,
         IReadOnlyList<OutputColumn> outputColumns);
 }

@@ -20,7 +20,7 @@ internal interface IJiraPresentationService
     /// </summary>
     /// <param name="defaultPdfPath">Default output path.</param>
     /// <returns>Resolved output path.</returns>
-    string ResolvePdfPath(string defaultPdfPath);
+    PdfFilePath ResolvePdfPath(PdfFilePath defaultPdfPath);
 
     /// <summary>
     /// Displays prepared report in console.
@@ -33,7 +33,7 @@ internal interface IJiraPresentationService
     /// Displays message about saved PDF file.
     /// </summary>
     /// <param name="pdfPath">Saved PDF path.</param>
-    void ShowPdfSaved(string pdfPath);
+    void ShowPdfSaved(PdfFilePath pdfPath);
 
     /// <summary>
     /// Displays error message.

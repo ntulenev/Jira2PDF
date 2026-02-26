@@ -59,7 +59,7 @@ internal sealed class JiraLogicService : IJiraLogicService
     }
 
     /// <inheritdoc />
-    public string BuildDefaultPdfPath(PdfReportName reportTitle, DateTimeOffset generatedAt)
+    public PdfFilePath BuildDefaultPdfPath(PdfReportName reportTitle, DateTimeOffset generatedAt)
     {
         var sanitizedTitle = SanitizeFileName(reportTitle.Value);
         if (string.IsNullOrWhiteSpace(sanitizedTitle))
@@ -68,7 +68,7 @@ internal sealed class JiraLogicService : IJiraLogicService
         }
 
         var timestampedFileName = $"{sanitizedTitle}_{generatedAt:yyyyMMdd_HHmmss}.pdf";
-        return Path.GetFullPath(timestampedFileName);
+        return new PdfFilePath(Path.GetFullPath(timestampedFileName));
     }
 
     /// <inheritdoc />

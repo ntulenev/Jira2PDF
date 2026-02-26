@@ -34,11 +34,10 @@ internal sealed class QuestPdfReportRenderer : IPdfReportRenderer
     public void RenderReport(
         JiraJqlReport report,
         JiraBaseUrl baseUrl,
-        string outputPath,
+        PdfFilePath outputPath,
         IReadOnlyList<OutputColumn> outputColumns)
     {
         ArgumentNullException.ThrowIfNull(report);
-        ArgumentException.ThrowIfNullOrWhiteSpace(outputPath);
         ArgumentNullException.ThrowIfNull(outputColumns);
 
         QuestPDF.Settings.License = QLicenseType.Community;

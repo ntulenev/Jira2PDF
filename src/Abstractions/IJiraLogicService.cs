@@ -31,7 +31,7 @@ internal interface IJiraLogicService
     /// <param name="reportTitle">Report title.</param>
     /// <param name="generatedAt">Generation timestamp.</param>
     /// <returns>Default output path.</returns>
-    string BuildDefaultPdfPath(PdfReportName reportTitle, DateTimeOffset generatedAt);
+    PdfFilePath BuildDefaultPdfPath(PdfReportName reportTitle, DateTimeOffset generatedAt);
 
     /// <summary>
     /// Builds report aggregate model.

@@ -1,3 +1,5 @@
+using JiraReport.Models.ValueObjects;
+
 using QuestPDF.Infrastructure;
 
 namespace JiraReport.Abstractions;
@@ -12,5 +14,5 @@ internal interface IPdfReportFileStore
     /// </summary>
     /// <param name="outputPath">Target output path.</param>
     /// <param name="document">Document instance.</param>
-    void Save(string outputPath, IDocument document);
+    void Save(PdfFilePath outputPath, IDocument document);
 }
