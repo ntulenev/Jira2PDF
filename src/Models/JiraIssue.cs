@@ -1,3 +1,5 @@
+using JiraReport.Models.ValueObjects;
+
 namespace JiraReport.Models;
 
 /// <summary>
@@ -10,44 +12,37 @@ internal sealed record JiraIssue
     /// </summary>
     /// <param name="key">Issue key.</param>
     /// <param name="fields">Normalized field values by key.</param>
-    public JiraIssue(string key, IReadOnlyDictionary<string, string> fields)
+    public JiraIssue(IssueKey key, IReadOnlyDictionary<IssueKey, FieldValue> fields)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(key);
+        ArgumentException.ThrowIfNullOrWhiteSpace(key.Value);
         ArgumentNullException.ThrowIfNull(fields);
 
-        Key = key.Trim();
+        Key = key;
         Fields = fields;
     }
 
     /// <summary>
     /// Gets issue key.
     /// </summary>
-    public string Key { get; }
+    public IssueKey Key { get; }
 
     /// <summary>
     /// Gets normalized field values by key.
     /// </summary>
-    public IReadOnlyDictionary<string, string> Fields { get; }
+    public IReadOnlyDictionary<IssueKey, FieldValue> Fields { get; }
 
     /// <summary>
     /// Gets normalized field value by key.
     /// </summary>
     /// <param name="fieldKey">Field key.</param>
     /// <returns>Field value or dash if missing.</returns>
-    public string GetFieldValue(string fieldKey)
+    public FieldValue GetFieldValue(IssueKey fieldKey)
     {
-        if (string.IsNullOrWhiteSpace(fieldKey))
+        if (fieldKey == IssueKey.DefaultKey)
         {
-            return "-";
+            return new FieldValue(Key.Value);
         }
 
-        if (string.Equals(fieldKey, "key", StringComparison.OrdinalIgnoreCase))
-        {
-            return Key;
-        }
-
-        return Fields.TryGetValue(fieldKey, out var value) && !string.IsNullOrWhiteSpace(value)
-            ? value.Trim()
-            : "-";
+        return Fields.TryGetValue(fieldKey, out var value) ? value : FieldValue.Missing;
     }
 }

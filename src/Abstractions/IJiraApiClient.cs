@@ -1,4 +1,5 @@
 using JiraReport.Models;
+using JiraReport.Models.ValueObjects;
 
 namespace JiraReport.Abstractions;
 
@@ -15,7 +16,7 @@ internal interface IJiraApiClient
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Issues matching the query.</returns>
     Task<IReadOnlyList<JiraIssue>> SearchIssuesAsync(
-        string jql,
-        IReadOnlyList<string> issueFields,
+        JqlQuery jql,
+        IReadOnlyList<IssueFieldName> issueFields,
         CancellationToken cancellationToken);
 }

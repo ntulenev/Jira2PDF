@@ -14,13 +14,13 @@ namespace JiraReport.Presentation;
 internal sealed class SpectreJiraPresentationService : IJiraPresentationService
 {
     /// <inheritdoc />
-    public ReportConfig? SelectReportConfig(IReadOnlyList<ReportConfig> sourceReports)
+    public ReportConfig SelectReportConfig(IReadOnlyList<ReportConfig> sourceReports)
     {
         ArgumentNullException.ThrowIfNull(sourceReports);
 
         if (sourceReports.Count == 0)
         {
-            return null;
+            throw new ArgumentException("No report configurations are available.", nameof(sourceReports));
         }
 
         var nameToConfig = sourceReports
@@ -71,14 +71,14 @@ internal sealed class SpectreJiraPresentationService : IJiraPresentationService
 
         AnsiConsole.WriteLine();
         AnsiConsole.Write(
-            new Rule($"[bold cyan]{Markup.Escape(report.Title)}[/]")
+            new Rule($"[bold cyan]{Markup.Escape(report.Title.Value)}[/]")
                 .RuleStyle("grey")
                 .LeftJustified());
 
         AnsiConsole.MarkupLine($"[grey]Generated:[/] {report.GeneratedAt:yyyy-MM-dd HH:mm:ss zzz}");
         AnsiConsole.MarkupLine($"[grey]Config:[/] {Markup.Escape(report.ConfigName)}");
 
-        AnsiConsole.MarkupLine($"[grey]JQL:[/] {Markup.Escape(report.Jql)}");
+        AnsiConsole.MarkupLine($"[grey]JQL:[/] {Markup.Escape(report.Jql.Value)}");
         AnsiConsole.MarkupLine($"[grey]Total issues:[/] {report.Issues.Count.ToString(CultureInfo.InvariantCulture)}");
 
         foreach (var countTable in report.CountTables)
@@ -177,7 +177,7 @@ internal sealed class SpectreJiraPresentationService : IJiraPresentationService
         {
             _ = table.AddRow([.. outputColumns.Select(column =>
             {
-                var value = column.Selector(issue);
+                var value = column.Selector(issue).Value;
                 return string.IsNullOrWhiteSpace(value) ? "-" : Markup.Escape(value);
             })]);
             shownIssuesCount++;
@@ -194,8 +194,8 @@ internal sealed class SpectreJiraPresentationService : IJiraPresentationService
         }
     }
 
-    private static int ResolveConsoleWidth(string fieldKey) =>
-        string.Equals(fieldKey, "summary", StringComparison.OrdinalIgnoreCase) ? 52 : 20;
+    private static int ResolveConsoleWidth(IssueKey fieldKey) =>
+        fieldKey == new IssueKey("summary") ? 52 : 20;
 
     private const int CONSOLE_ISSUE_LIMIT = 50;
 }

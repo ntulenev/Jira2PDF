@@ -3,6 +3,7 @@ using System.Net;
 using JiraReport.Abstractions;
 using JiraReport.Models;
 using JiraReport.Models.Configuration;
+using JiraReport.Models.ValueObjects;
 using JiraReport.Transport.Models;
 
 using Microsoft.Extensions.Options;
@@ -33,14 +34,14 @@ internal sealed class JiraApiClient : IJiraApiClient
 
     /// <inheritdoc />
     public async Task<IReadOnlyList<JiraIssue>> SearchIssuesAsync(
-        string jql,
-        IReadOnlyList<string> issueFields,
+        JqlQuery jql,
+        IReadOnlyList<IssueFieldName> issueFields,
         CancellationToken cancellationToken)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(jql);
         ArgumentNullException.ThrowIfNull(issueFields);
 
         var pageSize = Math.Clamp(_settings.MaxResultsPerPage, 1, 100);
+        var jqlText = jql.Value;
         var resolvedFields = await ResolveRequestedFieldsAsync(issueFields, cancellationToken).ConfigureAwait(false);
         var requestedFieldsCsv = BuildRequestedFieldsCsv(resolvedFields);
         var aliasesByApiField = BuildAliasesByApiField(resolvedFields);
@@ -48,7 +49,7 @@ internal sealed class JiraApiClient : IJiraApiClient
         try
         {
             return await SearchWithPageTokenAsync(
-                    jql,
+                    jqlText,
                     requestedFieldsCsv,
                     aliasesByApiField,
                     pageSize,
@@ -58,7 +59,7 @@ internal sealed class JiraApiClient : IJiraApiClient
         catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
         {
             return await SearchWithStartAtAsync(
-                    jql,
+                    jqlText,
                     requestedFieldsCsv,
                     aliasesByApiField,
                     pageSize,
@@ -98,8 +99,8 @@ internal sealed class JiraApiClient : IJiraApiClient
         }
 
         return [.. issues
-            .DistinctBy(static issue => issue.Key, StringComparer.OrdinalIgnoreCase)
-            .OrderBy(static issue => issue.Key, StringComparer.OrdinalIgnoreCase)];
+            .DistinctBy(static issue => issue.Key.Value, StringComparer.OrdinalIgnoreCase)
+            .OrderBy(static issue => issue.Key.Value, StringComparer.OrdinalIgnoreCase)];
     }
 
     private async Task<IReadOnlyList<JiraIssue>> SearchWithStartAtAsync(
@@ -135,8 +136,8 @@ internal sealed class JiraApiClient : IJiraApiClient
         }
 
         return [.. issues
-            .DistinctBy(static issue => issue.Key, StringComparer.OrdinalIgnoreCase)
-            .OrderBy(static issue => issue.Key, StringComparer.OrdinalIgnoreCase)];
+            .DistinctBy(static issue => issue.Key.Value, StringComparer.OrdinalIgnoreCase)
+            .OrderBy(static issue => issue.Key.Value, StringComparer.OrdinalIgnoreCase)];
     }
 
     private async Task<JiraSearchResponse> GetSearchPageAsync(string searchUrl, CancellationToken cancellationToken)
@@ -151,7 +152,7 @@ internal sealed class JiraApiClient : IJiraApiClient
     private static string NormalizeFieldKey(string fieldKey) => fieldKey.Trim();
 
     private async Task<IReadOnlyList<ResolvedRequestedField>> ResolveRequestedFieldsAsync(
-        IReadOnlyList<string> issueFields,
+        IReadOnlyList<IssueFieldName> issueFields,
         CancellationToken cancellationToken)
     {
         var fieldAliases = await GetFieldAliasesAsync(cancellationToken).ConfigureAwait(false);
@@ -161,12 +162,12 @@ internal sealed class JiraApiClient : IJiraApiClient
 
         foreach (var rawField in issueFields)
         {
-            if (string.IsNullOrWhiteSpace(rawField))
+            if (string.IsNullOrWhiteSpace(rawField.Value))
             {
                 continue;
             }
 
-            var configuredField = NormalizeFieldKey(rawField);
+            var configuredField = NormalizeFieldKey(rawField.Value);
             if (!seenConfiguredFields.Add(configuredField))
             {
                 continue;

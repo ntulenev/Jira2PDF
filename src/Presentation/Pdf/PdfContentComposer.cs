@@ -77,7 +77,7 @@ internal sealed class PdfContentComposer : IPdfContentComposer
             {
                 foreach (var column in outputColumns)
                 {
-                    if (string.Equals(column.Key, "summary", StringComparison.OrdinalIgnoreCase))
+                    if (column.Key == new IssueKey("summary"))
                     {
                         columns.RelativeColumn(3);
                     }
@@ -100,18 +100,18 @@ internal sealed class PdfContentComposer : IPdfContentComposer
             {
                 foreach (var column in outputColumns)
                 {
-                    if (string.Equals(column.Key, "key", StringComparison.OrdinalIgnoreCase))
+                    if (column.Key == IssueKey.DefaultKey)
                     {
                         var issueUrl = PdfPresentationHelpers.BuildIssueBrowseUrl(baseUrl, issue);
                         _ = table.Cell()
                             .Element(PdfPresentationHelpers.StyleBodyCell)
                             .Hyperlink(issueUrl)
                             .DefaultTextStyle(static style => style.FontColor(Colors.Blue.Darken2).Underline())
-                            .Text(issue.Key);
+                            .Text(issue.Key.Value);
                     }
                     else
                     {
-                        var value = column.Selector(issue);
+                        var value = column.Selector(issue).Value;
                         _ = table.Cell().Element(PdfPresentationHelpers.StyleBodyCell).Text(value);
                     }
                 }

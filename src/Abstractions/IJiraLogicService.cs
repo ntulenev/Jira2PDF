@@ -1,4 +1,5 @@
 using JiraReport.Models;
+using JiraReport.Models.ValueObjects;
 
 namespace JiraReport.Abstractions;
 
@@ -8,18 +9,11 @@ namespace JiraReport.Abstractions;
 internal interface IJiraLogicService
 {
     /// <summary>
-    /// Resolves visible report title.
-    /// </summary>
-    /// <param name="selectedReportConfig">Selected report config or null.</param>
-    /// <returns>Resolved title text.</returns>
-    string ResolveReportTitle(ReportConfig? selectedReportConfig);
-
-    /// <summary>
     /// Resolves output columns from config.
     /// </summary>
     /// <param name="configuredFields">Configured field names.</param>
     /// <returns>Resolved output columns.</returns>
-    IReadOnlyList<OutputColumn> ResolveOutputColumns(IReadOnlyList<string>? configuredFields);
+    IReadOnlyList<OutputColumn> ResolveOutputColumns(IReadOnlyList<IssueFieldName>? configuredFields);
 
     /// <summary>
     /// Resolves Jira API fields to request from report field configuration.
@@ -27,9 +21,9 @@ internal interface IJiraLogicService
     /// <param name="configuredOutputFields">Configured output field names.</param>
     /// <param name="configuredCountFields">Configured grouped count field names.</param>
     /// <returns>Field keys to request from Jira search API.</returns>
-    IReadOnlyList<string> ResolveRequestedIssueFields(
-        IReadOnlyList<string>? configuredOutputFields,
-        IReadOnlyList<string>? configuredCountFields);
+    IReadOnlyList<IssueFieldName> ResolveRequestedIssueFields(
+        IReadOnlyList<IssueFieldName>? configuredOutputFields,
+        IReadOnlyList<IssueFieldName>? configuredCountFields);
 
     /// <summary>
     /// Builds default output PDF path.
@@ -37,7 +31,7 @@ internal interface IJiraLogicService
     /// <param name="reportTitle">Report title.</param>
     /// <param name="generatedAt">Generation timestamp.</param>
     /// <returns>Default output path.</returns>
-    string BuildDefaultPdfPath(string reportTitle, DateTimeOffset generatedAt);
+    string BuildDefaultPdfPath(PdfReportName reportTitle, DateTimeOffset generatedAt);
 
     /// <summary>
     /// Builds report aggregate model.
@@ -49,9 +43,9 @@ internal interface IJiraLogicService
     /// <param name="configuredCountFields">Configured grouped count fields.</param>
     /// <returns>Prepared report model.</returns>
     JiraJqlReport BuildReport(
-        string reportTitle,
+        PdfReportName reportTitle,
         string configName,
-        string jql,
+        JqlQuery jql,
         IReadOnlyList<JiraIssue> issues,
-        IReadOnlyList<string>? configuredCountFields);
+        IReadOnlyList<IssueFieldName>? configuredCountFields);
 }

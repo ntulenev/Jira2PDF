@@ -1,5 +1,6 @@
 using JiraReport.Abstractions;
 using JiraReport.Models;
+using JiraReport.Models.ValueObjects;
 
 namespace JiraReport.Logic;
 
@@ -9,48 +10,38 @@ namespace JiraReport.Logic;
 internal sealed class JiraLogicService : IJiraLogicService
 {
     /// <inheritdoc />
-    public string ResolveReportTitle(ReportConfig? selectedReportConfig)
-    {
-        if (selectedReportConfig is null)
-        {
-            return "Jira JQL Report";
-        }
-
-        return selectedReportConfig.PdfReportName.Trim();
-    }
-
-    /// <inheritdoc />
-    public IReadOnlyList<OutputColumn> ResolveOutputColumns(IReadOnlyList<string>? configuredFields)
+    public IReadOnlyList<OutputColumn> ResolveOutputColumns(IReadOnlyList<IssueFieldName>? configuredFields)
     {
         var fieldKeys = ResolveConfiguredFieldKeys(configuredFields, _defaultOutputOrder);
         var columns = new List<OutputColumn>(fieldKeys.Count);
 
         foreach (var fieldKey in fieldKeys)
         {
-            var key = fieldKey;
+            var key = fieldKey.Value;
+            var issueFieldKey = new IssueKey(key);
             columns.Add(new OutputColumn(
-                key,
+                issueFieldKey,
                 BuildFieldHeader(key),
-                issue => issue.GetFieldValue(key)));
+                issue => issue.GetFieldValue(issueFieldKey)));
         }
 
         return columns;
     }
 
     /// <inheritdoc />
-    public IReadOnlyList<string> ResolveRequestedIssueFields(
-        IReadOnlyList<string>? configuredOutputFields,
-        IReadOnlyList<string>? configuredCountFields)
+    public IReadOnlyList<IssueFieldName> ResolveRequestedIssueFields(
+        IReadOnlyList<IssueFieldName>? configuredOutputFields,
+        IReadOnlyList<IssueFieldName>? configuredCountFields)
     {
-        var outputFields = ResolveOutputColumns(configuredOutputFields).Select(static column => column.Key);
+        var outputFields = ResolveConfiguredFieldKeys(configuredOutputFields, _defaultOutputOrder);
         var countFields = ResolveCountFieldKeys(configuredCountFields);
 
-        var requestedFields = new List<string>();
+        var requestedFields = new List<IssueFieldName>();
         var seenFields = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var field in outputFields)
         {
-            if (seenFields.Add(field))
+            if (seenFields.Add(field.Value))
             {
                 requestedFields.Add(field);
             }
@@ -58,7 +49,7 @@ internal sealed class JiraLogicService : IJiraLogicService
 
         foreach (var field in countFields)
         {
-            if (seenFields.Add(field))
+            if (seenFields.Add(field.Value))
             {
                 requestedFields.Add(field);
             }
@@ -68,9 +59,9 @@ internal sealed class JiraLogicService : IJiraLogicService
     }
 
     /// <inheritdoc />
-    public string BuildDefaultPdfPath(string reportTitle, DateTimeOffset generatedAt)
+    public string BuildDefaultPdfPath(PdfReportName reportTitle, DateTimeOffset generatedAt)
     {
-        var sanitizedTitle = SanitizeFileName(reportTitle);
+        var sanitizedTitle = SanitizeFileName(reportTitle.Value);
         if (string.IsNullOrWhiteSpace(sanitizedTitle))
         {
             sanitizedTitle = "jql-report";
@@ -82,11 +73,11 @@ internal sealed class JiraLogicService : IJiraLogicService
 
     /// <inheritdoc />
     public JiraJqlReport BuildReport(
-        string reportTitle,
+        PdfReportName reportTitle,
         string configName,
-        string jql,
+        JqlQuery jql,
         IReadOnlyList<JiraIssue> issues,
-        IReadOnlyList<string>? configuredCountFields)
+        IReadOnlyList<IssueFieldName>? configuredCountFields)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(configName);
         ArgumentNullException.ThrowIfNull(issues);
@@ -97,34 +88,35 @@ internal sealed class JiraLogicService : IJiraLogicService
 
     private static List<CountTable> ResolveCountTables(
         IReadOnlyList<JiraIssue> issues,
-        IReadOnlyList<string>? configuredCountFields)
+        IReadOnlyList<IssueFieldName>? configuredCountFields)
     {
         var countFieldKeys = ResolveCountFieldKeys(configuredCountFields);
         var tables = new List<CountTable>();
 
         foreach (var countFieldKey in countFieldKeys)
         {
+            var issueFieldKey = new IssueKey(countFieldKey.Value);
             tables.Add(new CountTable(
-                $"By {BuildFieldHeader(countFieldKey)}",
-                GroupByCount(issues, issue => issue.GetFieldValue(countFieldKey))));
+                $"By {BuildFieldHeader(countFieldKey.Value)}",
+                GroupByCount(issues, issue => issue.GetFieldValue(issueFieldKey))));
         }
 
         return tables;
     }
 
-    private static List<string> ResolveCountFieldKeys(IReadOnlyList<string>? configuredCountFields)
+    private static List<IssueFieldName> ResolveCountFieldKeys(IReadOnlyList<IssueFieldName>? configuredCountFields)
         => ResolveConfiguredFieldKeys(configuredCountFields, _defaultCountOrder);
 
     private static IReadOnlyList<CountRow> GroupByCount(
         IReadOnlyList<JiraIssue> issues,
-        Func<JiraIssue, string> selector)
+        Func<JiraIssue, FieldValue> selector)
     {
         return [.. issues
             .GroupBy(
                 issue =>
                 {
                     var value = selector(issue);
-                    return string.IsNullOrWhiteSpace(value) || value == "-" ? "Unknown" : value.Trim();
+                    return value == FieldValue.Missing ? "Unknown" : value.Value;
                 },
                 StringComparer.OrdinalIgnoreCase)
             .Select(static group => new CountRow(group.Key, group.Count()))
@@ -132,27 +124,29 @@ internal sealed class JiraLogicService : IJiraLogicService
             .ThenBy(static group => group.Name, StringComparer.OrdinalIgnoreCase)];
     }
 
-    private static List<string> ResolveConfiguredFieldKeys(
-        IReadOnlyList<string>? configuredFields,
-        IReadOnlyList<string> defaultFields)
+    private static List<IssueFieldName> ResolveConfiguredFieldKeys(
+        IReadOnlyList<IssueFieldName>? configuredFields,
+        IReadOnlyList<IssueFieldName> defaultFields)
     {
         ArgumentNullException.ThrowIfNull(defaultFields);
 
-        var sourceFields = configuredFields is { Count: > 0 } ? configuredFields : defaultFields;
-        var resolvedFields = new List<string>();
+        var sourceFields = configuredFields is { Count: > 0 }
+            ? configuredFields
+            : defaultFields;
+        var resolvedFields = new List<IssueFieldName>();
         var seenFields = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var rawField in sourceFields)
         {
-            if (string.IsNullOrWhiteSpace(rawField))
+            if (string.IsNullOrWhiteSpace(rawField.Value))
             {
                 continue;
             }
 
-            var normalizedField = rawField.Trim();
+            var normalizedField = rawField.Value.Trim();
             if (seenFields.Add(normalizedField))
             {
-                resolvedFields.Add(normalizedField);
+                resolvedFields.Add(new IssueFieldName(normalizedField));
             }
         }
 
@@ -204,9 +198,21 @@ internal sealed class JiraLogicService : IJiraLogicService
             : sanitized.Replace(' ', '_');
     }
 
-    private static readonly IReadOnlyList<string> _defaultOutputOrder =
-        ["key", "issuetype", "status", "assignee", "created", "updated", "summary"];
+    private static readonly IReadOnlyList<IssueFieldName> _defaultOutputOrder =
+    [
+        new IssueFieldName("key"),
+        new IssueFieldName("issuetype"),
+        new IssueFieldName("status"),
+        new IssueFieldName("assignee"),
+        new IssueFieldName("created"),
+        new IssueFieldName("updated"),
+        new IssueFieldName("summary")
+    ];
 
-    private static readonly IReadOnlyList<string> _defaultCountOrder =
-        ["status", "issuetype", "assignee"];
+    private static readonly IReadOnlyList<IssueFieldName> _defaultCountOrder =
+    [
+        new IssueFieldName("status"),
+        new IssueFieldName("issuetype"),
+        new IssueFieldName("assignee")
+    ];
 }

@@ -54,7 +54,7 @@ internal sealed class QuestPdfReportRenderer : IPdfReportRenderer
                 page.Header().Column(column =>
                 {
                     column.Spacing(2);
-                    _ = column.Item().Text(report.Title).Bold().FontSize(15);
+                    _ = column.Item().Text(report.Title.Value).Bold().FontSize(15);
                     _ = column.Item().Text(
                         string.Format(
                             CultureInfo.InvariantCulture,
@@ -62,7 +62,7 @@ internal sealed class QuestPdfReportRenderer : IPdfReportRenderer
                             report.GeneratedAt));
                     _ = column.Item().Text("Config: " + report.ConfigName);
 
-                    _ = column.Item().Text("JQL: " + report.Jql);
+                    _ = column.Item().Text("JQL: " + report.Jql.Value);
                     _ = column.Item().Text("Total issues: " + report.Issues.Count.ToString(CultureInfo.InvariantCulture));
                     _ = column.Item().Text("Jira base URL: " + baseUrl.Value);
                 });

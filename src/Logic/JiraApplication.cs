@@ -45,19 +45,13 @@ internal sealed class JiraApplication : IJiraApplication
         try
         {
             var selectedReportConfig = _jiraPresentationService.SelectReportConfig(_settings.Reports);
-            if (selectedReportConfig is null)
-            {
-                throw new InvalidOperationException(
-                    "No reports are configured. Add at least one item under Jira:Reports in appsettings.json.");
-            }
-
             var jql = selectedReportConfig.Jql;
 
             var outputColumns = _jiraLogicService.ResolveOutputColumns(selectedReportConfig.OutputFields);
             var requestedIssueFields = _jiraLogicService.ResolveRequestedIssueFields(
                 selectedReportConfig.OutputFields,
                 selectedReportConfig.CountFields);
-            var reportTitle = _jiraLogicService.ResolveReportTitle(selectedReportConfig);
+            var reportTitle = selectedReportConfig.PdfReportName;
             var defaultPdfPath = _jiraLogicService.BuildDefaultPdfPath(reportTitle, DateTimeOffset.Now);
             var outputPath = _jiraPresentationService.ResolvePdfPath(defaultPdfPath);
 

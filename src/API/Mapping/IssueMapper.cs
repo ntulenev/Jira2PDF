@@ -3,6 +3,7 @@ using System.Text.Json;
 
 using JiraReport.Abstractions;
 using JiraReport.Models;
+using JiraReport.Models.ValueObjects;
 using JiraReport.Transport.Models;
 
 namespace JiraReport.API.Mapping;
@@ -29,26 +30,26 @@ internal sealed class IssueMapper : IIssueMapper
             .Where(static issue => !string.IsNullOrWhiteSpace(issue.Key))
             .Select(issue =>
             {
-                var fields = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                var fields = new Dictionary<IssueKey, FieldValue>();
                 if (issue.Fields?.Values is { Count: > 0 })
                 {
                     foreach (var (fieldKey, rawValue) in issue.Fields.Values)
                     {
                         var normalizedFieldKey = NormalizeFieldKey(fieldKey);
                         var fieldValue = NormalizeFieldValue(normalizedFieldKey, rawValue);
-                        fields[normalizedFieldKey] = fieldValue;
+                        fields[new IssueKey(normalizedFieldKey)] = new FieldValue(fieldValue);
 
                         if (aliasesByApiField.TryGetValue(normalizedFieldKey, out var aliases))
                         {
                             foreach (var alias in aliases)
                             {
-                                fields[alias] = fieldValue;
+                                fields[new IssueKey(alias)] = new FieldValue(fieldValue);
                             }
                         }
                     }
                 }
 
-                return new JiraIssue(issue.Key!.Trim(), fields);
+                return new JiraIssue(new IssueKey(issue.Key!.Trim()), fields);
             })];
     }
 

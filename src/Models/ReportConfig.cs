@@ -1,3 +1,5 @@
+using JiraReport.Models.ValueObjects;
+
 namespace JiraReport.Models;
 
 /// <summary>
@@ -15,22 +17,20 @@ internal sealed record ReportConfig
     /// <param name="pdfReportName">Required PDF report title/file base name.</param>
     public ReportConfig(
         string name,
-        string jql,
-        IReadOnlyList<string> outputFields,
-        IReadOnlyList<string> countFields,
-        string pdfReportName)
+        JqlQuery jql,
+        IReadOnlyList<IssueFieldName> outputFields,
+        IReadOnlyList<IssueFieldName> countFields,
+        PdfReportName pdfReportName)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
-        ArgumentException.ThrowIfNullOrWhiteSpace(jql);
         ArgumentNullException.ThrowIfNull(outputFields);
         ArgumentNullException.ThrowIfNull(countFields);
-        ArgumentException.ThrowIfNullOrWhiteSpace(pdfReportName);
 
         Name = name.Trim();
-        Jql = jql.Trim();
-        OutputFields = outputFields;
-        CountFields = countFields;
-        PdfReportName = pdfReportName.Trim();
+        Jql = jql;
+        OutputFields = [.. outputFields];
+        CountFields = [.. countFields];
+        PdfReportName = pdfReportName;
     }
 
     /// <summary>
@@ -41,20 +41,20 @@ internal sealed record ReportConfig
     /// <summary>
     /// Gets JQL query.
     /// </summary>
-    public string Jql { get; }
+    public JqlQuery Jql { get; }
 
     /// <summary>
     /// Gets requested output fields.
     /// </summary>
-    public IReadOnlyList<string> OutputFields { get; }
+    public IReadOnlyList<IssueFieldName> OutputFields { get; }
 
     /// <summary>
     /// Gets requested grouped count fields.
     /// </summary>
-    public IReadOnlyList<string> CountFields { get; }
+    public IReadOnlyList<IssueFieldName> CountFields { get; }
 
     /// <summary>
     /// Gets required PDF report title/file base name.
     /// </summary>
-    public string PdfReportName { get; }
+    public PdfReportName PdfReportName { get; }
 }

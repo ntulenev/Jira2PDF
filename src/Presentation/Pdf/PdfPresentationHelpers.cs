@@ -57,6 +57,18 @@ internal static class PdfPresentationHelpers
     }
 
     /// <summary>
+    /// Builds Jira issue browse URL for an issue key value object.
+    /// </summary>
+    /// <param name="baseUrl">Jira base URL.</param>
+    /// <param name="issueKey">Issue key value.</param>
+    /// <returns>Issue browse URL.</returns>
+    public static string BuildIssueBrowseUrl(JiraBaseUrl baseUrl, IssueKey issueKey)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(issueKey.Value);
+        return BuildIssueBrowseUrl(baseUrl, issueKey.Value);
+    }
+
+    /// <summary>
     /// Builds Jira issue browse URL for an issue key.
     /// </summary>
     /// <param name="baseUrl">Jira base URL.</param>

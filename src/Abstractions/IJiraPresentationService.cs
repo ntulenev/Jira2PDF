@@ -12,8 +12,8 @@ internal interface IJiraPresentationService
     /// Selects report configuration from configured entries.
     /// </summary>
     /// <param name="sourceReports">Configured reports.</param>
-    /// <returns>Selected report or null.</returns>
-    ReportConfig? SelectReportConfig(IReadOnlyList<ReportConfig> sourceReports);
+    /// <returns>Selected report.</returns>
+    ReportConfig SelectReportConfig(IReadOnlyList<ReportConfig> sourceReports);
 
     /// <summary>
     /// Resolves output PDF path from interactive input.

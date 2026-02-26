@@ -1,3 +1,5 @@
+using JiraReport.Models.ValueObjects;
+
 namespace JiraReport.Models;
 
 /// <summary>
@@ -15,31 +17,29 @@ internal sealed record JiraJqlReport
     /// <param name="issues">Loaded issues.</param>
     /// <param name="countTables">Prepared grouped summary tables.</param>
     public JiraJqlReport(
-        string title,
+        PdfReportName title,
         string configName,
-        string jql,
+        JqlQuery jql,
         DateTimeOffset generatedAt,
         IReadOnlyList<JiraIssue> issues,
         IReadOnlyList<CountTable> countTables)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(title);
         ArgumentException.ThrowIfNullOrWhiteSpace(configName);
-        ArgumentException.ThrowIfNullOrWhiteSpace(jql);
         ArgumentNullException.ThrowIfNull(issues);
         ArgumentNullException.ThrowIfNull(countTables);
 
-        Title = title.Trim();
+        Title = title;
         ConfigName = configName.Trim();
-        Jql = jql.Trim();
+        Jql = jql;
         GeneratedAt = generatedAt;
-        Issues = [.. issues];
-        CountTables = [.. countTables];
+        Issues = issues;
+        CountTables = countTables;
     }
 
     /// <summary>
     /// Gets report title.
     /// </summary>
-    public string Title { get; }
+    public PdfReportName Title { get; }
 
     /// <summary>
     /// Gets configuration name.
@@ -49,7 +49,7 @@ internal sealed record JiraJqlReport
     /// <summary>
     /// Gets JQL query used for loading.
     /// </summary>
-    public string Jql { get; }
+    public JqlQuery Jql { get; }
 
     /// <summary>
     /// Gets generation timestamp.
