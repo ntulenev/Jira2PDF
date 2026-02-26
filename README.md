@@ -59,7 +59,7 @@ dotnet run --project .\src\JiraReport.csproj
 Configuration file path: `src/appsettings.json`  
 Main section: `Jira`
 
-### Full Example (Synthetic, Safe)
+### Full Example
 
 ```json
 {
