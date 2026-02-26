@@ -52,12 +52,6 @@ internal sealed class SpectreJiraPresentationService : IJiraPresentationService
         }
 
         selectedPath = Path.GetFullPath(selectedPath);
-        var directory = Path.GetDirectoryName(selectedPath);
-        if (!string.IsNullOrWhiteSpace(directory))
-        {
-            _ = Directory.CreateDirectory(directory);
-        }
-
         return new PdfFilePath(selectedPath);
     }
 
