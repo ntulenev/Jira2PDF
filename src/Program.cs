@@ -32,17 +32,12 @@ builder.Services
 builder.Services.AddSingleton(sp =>
 {
     var source = sp.GetRequiredService<IOptions<JiraOptions>>().Value;
-    var baseUrl = GetRequiredSetting(
-        "Jira Base URL",
-        source.BaseUrl?.ToString());
-    var email = GetRequiredSetting("Jira Email", source.Email);
-    var apiToken = GetRequiredSetting("Jira API Token", source.ApiToken);
     var reports = ResolveReports(source.Reports);
 
     var settings = new AppSettings(
-        new JiraBaseUrl(baseUrl),
-        new JiraEmail(email),
-        new JiraApiToken(apiToken),
+        new JiraBaseUrl(source.BaseUrl.ToString()),
+        new JiraEmail(source.Email),
+        new JiraApiToken(source.ApiToken),
         Math.Clamp(source.MaxResultsPerPage, 1, 100),
         source.RetryCount,
         reports);
@@ -77,39 +72,19 @@ using var host = builder.Build();
 var application = host.Services.GetRequiredService<IJiraApplication>();
 await application.RunAsync(CancellationToken.None).ConfigureAwait(false);
 
-static string GetRequiredSetting(string label, string? currentValue)
+static IReadOnlyList<ReportConfig> ResolveReports(IReadOnlyList<ReportConfigOptions> sourceReports)
 {
-    if (HasConfiguredValue(currentValue))
-    {
-        return currentValue!.Trim();
-    }
-
-    throw new InvalidOperationException($"{label} is required in appsettings.json.");
-}
-
-static bool HasConfiguredValue(string? value)
-{
-    return !string.IsNullOrWhiteSpace(value);
-}
-
-static IReadOnlyList<ReportConfig> ResolveReports(IReadOnlyList<ReportConfigOptions>? sourceReports)
-{
-    if (sourceReports is null || sourceReports.Count == 0)
-    {
-        throw new InvalidOperationException("Jira:Reports must contain at least one report.");
-    }
-
     var reports = sourceReports
         .Where(static report =>
             !string.IsNullOrWhiteSpace(report.Name) &&
             !string.IsNullOrWhiteSpace(report.Jql) &&
             !string.IsNullOrWhiteSpace(report.PdfReportName))
         .Select(report => new ReportConfig(
-            report.Name!.Trim(),
-            report.Jql!.Trim(),
+            report.Name.Trim(),
+            report.Jql.Trim(),
             report.OutputFields is null ? [] : [.. report.OutputFields],
             report.CountFields is null ? [] : [.. report.CountFields],
-            report.PdfReportName!.Trim()))
+            report.PdfReportName.Trim()))
         .ToList();
 
     if (reports.Count == 0)

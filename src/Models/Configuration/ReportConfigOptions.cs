@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace JiraReport.Models.Configuration;
 
 /// <summary>
@@ -8,12 +10,14 @@ internal sealed class ReportConfigOptions
     /// <summary>
     /// Gets config name.
     /// </summary>
-    public string? Name { get; init; }
+    [Required]
+    public required string Name { get; init; }
 
     /// <summary>
     /// Gets config JQL query.
     /// </summary>
-    public string? Jql { get; init; }
+    [Required]
+    public required string Jql { get; init; }
 
     /// <summary>
     /// Gets requested output fields.
@@ -28,5 +32,6 @@ internal sealed class ReportConfigOptions
     /// <summary>
     /// Gets required PDF report title/file base name.
     /// </summary>
-    public string? PdfReportName { get; init; }
+    [Required]
+    public required string PdfReportName { get; init; }
 }

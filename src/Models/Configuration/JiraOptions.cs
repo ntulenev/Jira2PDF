@@ -10,17 +10,20 @@ internal sealed class JiraOptions
     /// <summary>
     /// Gets Jira base URL.
     /// </summary>
-    public Uri? BaseUrl { get; init; }
+    [Required]
+    public required Uri BaseUrl { get; init; }
 
     /// <summary>
     /// Gets Jira user email.
     /// </summary>
-    public string? Email { get; init; }
+    [Required]
+    public required string Email { get; init; }
 
     /// <summary>
     /// Gets Jira API token.
     /// </summary>
-    public string? ApiToken { get; init; }
+    [Required]
+    public required string ApiToken { get; init; }
 
     /// <summary>
     /// Gets maximum page size for Jira search calls.
@@ -37,5 +40,7 @@ internal sealed class JiraOptions
     /// <summary>
     /// Gets named report configurations.
     /// </summary>
-    public IReadOnlyList<ReportConfigOptions>? Reports { get; init; }
+    [Required]
+    [MinLength(1)]
+    public required IReadOnlyList<ReportConfigOptions> Reports { get; init; }
 }
