@@ -88,7 +88,7 @@ internal sealed class JiraLogicService : IJiraLogicService
             var issueFieldKey = new IssueKey(countFieldKey.Value);
             tables.Add(new CountTable(
                 $"By {OutputColumnHeader.FromFieldKey(countFieldKey.Value).Value}",
-                GroupByCount(issues, issue => issue.GetFieldValue(issueFieldKey))));
+                GroupByCount(issues, issueFieldKey)));
         }
 
         return tables;
@@ -99,19 +99,36 @@ internal sealed class JiraLogicService : IJiraLogicService
 
     private static IReadOnlyList<CountRow> GroupByCount(
         IReadOnlyList<JiraIssue> issues,
-        Func<JiraIssue, FieldValue> selector)
+        IssueKey issueFieldKey)
     {
         return [.. issues
-            .GroupBy(
-                issue =>
-                {
-                    var value = selector(issue);
-                    return value == FieldValue.Missing ? "Unknown" : value.Value;
-                },
-                StringComparer.OrdinalIgnoreCase)
+            .SelectMany(issue => ExpandCountValues(issue, issueFieldKey))
+            .GroupBy(static value => value, StringComparer.OrdinalIgnoreCase)
             .Select(static group => new CountRow(group.Key, group.Count()))
             .OrderByDescending(static group => group.Count)
             .ThenBy(static group => group.Name, StringComparer.OrdinalIgnoreCase)];
+    }
+
+    private static List<string> ExpandCountValues(JiraIssue issue, IssueKey issueFieldKey)
+    {
+        var multiValues = issue.GetFieldValues(issueFieldKey);
+        if (multiValues.Count > 0)
+        {
+            var expandedMultiValues = multiValues
+                .Select(static value => value.Value)
+                .Where(static value => !string.IsNullOrWhiteSpace(value) && value != "-")
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            return expandedMultiValues.Count > 0 ? expandedMultiValues : ["Unknown"];
+        }
+
+        var value = issue.GetFieldValue(issueFieldKey);
+        if (value == FieldValue.Missing || string.IsNullOrWhiteSpace(value.Value) || value.Value == "-")
+        {
+            return ["Unknown"];
+        }
+
+        return [value.Value];
     }
 
     private static List<IssueFieldName> ResolveConfiguredFieldKeys(

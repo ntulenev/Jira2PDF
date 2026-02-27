@@ -116,6 +116,7 @@ Each report item supports:
 - `Jql`: query to run.
 - `OutputFields`: table columns for console/PDF (order is preserved).
 - `CountFields`: summary table groups to display (order is preserved; defaults to `status`, `issuetype`, `assignee`).
+  For Jira multi-value fields (for example `components`), each item is counted separately in summary tables (based on Jira JSON arrays, not by splitting text on commas).
 - `PdfReportName`: required report title/file base name used for generated PDF name.
 
 Jira API field loading is derived from the union of `OutputFields` and `CountFields`, so only needed fields are requested.

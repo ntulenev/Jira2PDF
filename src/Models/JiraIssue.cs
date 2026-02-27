@@ -12,13 +12,18 @@ internal sealed record JiraIssue
     /// </summary>
     /// <param name="key">Issue key.</param>
     /// <param name="fields">Normalized field values by key.</param>
-    public JiraIssue(IssueKey key, IReadOnlyDictionary<IssueKey, FieldValue> fields)
+    /// <param name="multiValueFields">Normalized multi-value field items by key.</param>
+    public JiraIssue(
+        IssueKey key,
+        IReadOnlyDictionary<IssueKey, FieldValue> fields,
+        IReadOnlyDictionary<IssueKey, IReadOnlyList<FieldValue>>? multiValueFields = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(key.Value);
         ArgumentNullException.ThrowIfNull(fields);
 
         Key = key;
         Fields = fields;
+        MultiValueFields = multiValueFields ?? _emptyMultiValueFields;
     }
 
     /// <summary>
@@ -30,6 +35,11 @@ internal sealed record JiraIssue
     /// Gets normalized field values by key.
     /// </summary>
     public IReadOnlyDictionary<IssueKey, FieldValue> Fields { get; }
+
+    /// <summary>
+    /// Gets normalized multi-value field items by key.
+    /// </summary>
+    public IReadOnlyDictionary<IssueKey, IReadOnlyList<FieldValue>> MultiValueFields { get; }
 
     /// <summary>
     /// Gets normalized field value by key.
@@ -45,4 +55,23 @@ internal sealed record JiraIssue
 
         return Fields.TryGetValue(fieldKey, out var value) ? value : FieldValue.Missing;
     }
+
+    /// <summary>
+    /// Gets normalized multi-value field items by key.
+    /// </summary>
+    /// <param name="fieldKey">Field key.</param>
+    /// <returns>Field item values or empty list if field is not multi-value or missing.</returns>
+    public IReadOnlyList<FieldValue> GetFieldValues(IssueKey fieldKey)
+    {
+        if (fieldKey == IssueKey.DefaultKey)
+        {
+            return [new FieldValue(Key.Value)];
+        }
+
+        return MultiValueFields.TryGetValue(fieldKey, out var values) ? values : _emptyFieldValues;
+    }
+
+    private static readonly IReadOnlyDictionary<IssueKey, IReadOnlyList<FieldValue>> _emptyMultiValueFields =
+        new Dictionary<IssueKey, IReadOnlyList<FieldValue>>();
+    private static readonly IReadOnlyList<FieldValue> _emptyFieldValues = [];
 }

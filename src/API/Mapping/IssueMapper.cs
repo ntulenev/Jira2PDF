@@ -31,116 +31,136 @@ internal sealed class IssueMapper : IIssueMapper
             .Select(issue =>
             {
                 var fields = new Dictionary<IssueKey, FieldValue>();
+                var multiValueFields = new Dictionary<IssueKey, IReadOnlyList<FieldValue>>();
                 if (issue.Fields?.Values is { Count: > 0 })
                 {
                     foreach (var (fieldKey, rawValue) in issue.Fields.Values)
                     {
                         var normalizedFieldKey = NormalizeFieldKey(fieldKey);
-                        var fieldValue = NormalizeFieldValue(normalizedFieldKey, rawValue);
-                        fields[new IssueKey(normalizedFieldKey)] = new FieldValue(fieldValue);
+                        var normalizedValues = NormalizeFieldValues(normalizedFieldKey, rawValue);
+                        var flattenedValue = normalizedValues.Count == 0
+                            ? "-"
+                            : string.Join(", ", normalizedValues);
+                        var issueFieldKey = new IssueKey(normalizedFieldKey);
+                        fields[issueFieldKey] = new FieldValue(flattenedValue);
+
+                        List<FieldValue>? fieldItems = null;
+                        if (rawValue.ValueKind == JsonValueKind.Array && normalizedValues.Count > 0)
+                        {
+                            fieldItems = [.. normalizedValues.Select(static item => new FieldValue(item))];
+                            multiValueFields[issueFieldKey] = fieldItems;
+                        }
 
                         if (aliasesByApiField.TryGetValue(normalizedFieldKey, out var aliases))
                         {
                             foreach (var alias in aliases)
                             {
-                                fields[new IssueKey(alias)] = new FieldValue(fieldValue);
+                                var aliasKey = new IssueKey(alias);
+                                fields[aliasKey] = new FieldValue(flattenedValue);
+                                if (fieldItems is not null)
+                                {
+                                    multiValueFields[aliasKey] = fieldItems;
+                                }
                             }
                         }
                     }
                 }
 
-                return new JiraIssue(new IssueKey(issue.Key!.Trim()), fields);
+                return new JiraIssue(new IssueKey(issue.Key!.Trim()), fields, multiValueFields);
             })];
     }
 
-    private static string NormalizeFieldValue(string fieldKey, JsonElement rawValue)
+    private static List<string> NormalizeFieldValues(string fieldKey, JsonElement rawValue)
     {
-        var value = ExtractJsonValue(rawValue);
-        if (string.IsNullOrWhiteSpace(value) || value == "-")
+        var values = ExtractJsonValues(rawValue);
+        if (values.Count == 0)
         {
-            return "-";
+            return [];
         }
 
-        var trimmed = value.Trim();
-        if (IsDateField(fieldKey) &&
-            DateTimeOffset.TryParse(trimmed, CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsed))
+        var normalizedValues = new List<string>(values.Count);
+        foreach (var value in values)
         {
-            return parsed.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+            if (string.IsNullOrWhiteSpace(value) || value == "-")
+            {
+                continue;
+            }
+
+            var normalizedValue = value.Trim();
+            if (IsDateField(fieldKey) &&
+                DateTimeOffset.TryParse(
+                    normalizedValue,
+                    CultureInfo.InvariantCulture,
+                    DateTimeStyles.None,
+                    out var parsed))
+            {
+                normalizedValue = parsed.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+            }
+
+            normalizedValues.Add(normalizedValue);
         }
 
-        return trimmed;
+        return [.. normalizedValues.Distinct(StringComparer.OrdinalIgnoreCase)];
     }
 
-    private static string ExtractJsonValue(JsonElement value)
+    private static List<string> ExtractJsonValues(JsonElement value)
     {
         switch (value.ValueKind)
         {
             case JsonValueKind.String:
-                return value.GetString() ?? "-";
+            {
+                var stringValue = value.GetString();
+                return string.IsNullOrWhiteSpace(stringValue) ? [] : [stringValue];
+            }
+
             case JsonValueKind.Number:
             case JsonValueKind.True:
             case JsonValueKind.False:
-                return value.ToString();
+                return [value.ToString()];
+
             case JsonValueKind.Array:
-            {
-                var items = value
-                    .EnumerateArray()
-                    .Select(ExtractJsonValue)
-                    .Where(static item => !string.IsNullOrWhiteSpace(item) && item != "-")
-                    .ToList();
-                return items.Count == 0 ? "-" : string.Join(", ", items);
-            }
+                return [.. value.EnumerateArray().SelectMany(ExtractJsonValues)];
 
             case JsonValueKind.Object:
-            {
-                if (TryGetObjectDisplayValue(value, "displayName", out var displayName))
-                {
-                    return displayName;
-                }
-
-                if (TryGetObjectDisplayValue(value, "name", out var name))
-                {
-                    return name;
-                }
-
-                if (TryGetObjectDisplayValue(value, "value", out var optionValue))
-                {
-                    return optionValue;
-                }
-
-                if (TryGetObjectDisplayValue(value, "key", out var key))
-                {
-                    return key;
-                }
-
-                return "-";
-            }
+                return ExtractObjectDisplayValues(value);
 
             case JsonValueKind.Null:
             case JsonValueKind.Undefined:
-                return "-";
+                return [];
+
             default:
-                return "-";
+                return [];
         }
     }
 
-    private static bool TryGetObjectDisplayValue(JsonElement value, string propertyName, out string result)
+    private static List<string> ExtractObjectDisplayValues(JsonElement value)
     {
-        result = string.Empty;
+        foreach (var propertyName in _objectDisplayPropertyOrder)
+        {
+            if (TryGetObjectDisplayValues(value, propertyName, out var values))
+            {
+                return values;
+            }
+        }
 
+        return [];
+    }
+
+    private static bool TryGetObjectDisplayValues(
+        JsonElement value,
+        string propertyName,
+        out List<string> values)
+    {
+        values = [];
         if (!value.TryGetProperty(propertyName, out var propertyValue))
         {
             return false;
         }
 
-        var extracted = ExtractJsonValue(propertyValue);
-        if (string.IsNullOrWhiteSpace(extracted) || extracted == "-")
-        {
-            return false;
-        }
-
-        result = extracted.Trim();
-        return true;
+        values = [.. ExtractJsonValues(propertyValue)
+            .Where(static item => !string.IsNullOrWhiteSpace(item) && item != "-")
+            .Select(static item => item.Trim())];
+        return values.Count > 0;
     }
 
     private static bool IsDateField(string fieldKey) =>
@@ -148,4 +168,6 @@ internal sealed class IssueMapper : IIssueMapper
         string.Equals(fieldKey, "updated", StringComparison.OrdinalIgnoreCase);
 
     private static string NormalizeFieldKey(string fieldKey) => fieldKey.Trim();
+    private static readonly IReadOnlyList<string> _objectDisplayPropertyOrder =
+        ["displayName", "name", "value", "key"];
 }
