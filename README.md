@@ -145,3 +145,15 @@ dotnet build .\src\JiraReport.csproj
   - verify JQL syntax in Jira UI first.
 - Empty results
   - check date range, project key, status names, permissions.
+
+## Output
+
+>For demonstration purposes, the program output shown in the screenshots uses synthetic data to avoid exposing information from real Jira issues and users.
+
+### Console
+<img src="jira2pdf_1.png" alt="Output part 1">
+<img src="jira2pdf_2.png" alt="Output part 2">
+
+### PDF
+<img src="jira2pdf_3.png" alt="Output part 3">
+<img src="jira2pdf_4.png" alt="Output part 4">
