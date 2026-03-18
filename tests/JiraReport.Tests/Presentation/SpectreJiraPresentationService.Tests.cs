@@ -138,6 +138,24 @@ public sealed class SpectreJiraPresentationServiceTests
         output.Should().Contain(@"C:\reports\jira.pdf");
     }
 
+    [Fact(DisplayName = "ShowCsvSaved writes CSV path message")]
+    [Trait("Category", "Unit")]
+    public async Task ShowCsvSavedWhenCalledWritesCsvPathMessage()
+    {
+        // Arrange
+        var service = new SpectreJiraPresentationService();
+
+        // Act
+        var output = await CaptureOutputAsync(() =>
+        {
+            service.ShowCsvSaved(new CsvFilePath(@"C:\reports\jira_raw.csv"));
+            return Task.CompletedTask;
+        });
+
+        // Assert
+        output.Should().Contain(@"C:\reports\jira_raw.csv");
+    }
+
     [Fact(DisplayName = "ShowError writes error message")]
     [Trait("Category", "Unit")]
     public async Task ShowErrorWhenCalledWritesErrorMessage()
