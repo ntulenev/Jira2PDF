@@ -288,7 +288,8 @@ public sealed class JiraApplicationTests
         pdfReportRenderer.Setup(renderer => renderer.RenderReport(report, CreateSettings(csvEnabled: true, displayHeaders: true).BaseUrl, outputPath, outputColumns));
 
         var csvReportWriter = new Mock<ICsvReportWriter>(MockBehavior.Strict);
-        csvReportWriter.Setup(writer => writer.WriteReport(report, csvPath, outputColumns, true));
+        csvReportWriter.Setup(writer => writer.WriteReportAsync(report, csvPath, outputColumns, true))
+            .Returns(Task.CompletedTask);
 
         var app = new JiraApplication(
             Options.Create(CreateSettings(csvEnabled: true, displayHeaders: true)),

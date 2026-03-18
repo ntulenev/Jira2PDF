@@ -10,7 +10,7 @@ public sealed class CsvReportWriterTests
 {
     [Fact(DisplayName = "WriteReport writes headers and escapes values when enabled")]
     [Trait("Category", "Unit")]
-    public void WriteReportWhenHeadersAreEnabledWritesHeaderAndEscapedRows()
+    public async Task WriteReportWhenHeadersAreEnabledWritesHeaderAndEscapedRows()
     {
         // Arrange
         var writer = new CsvReportWriter();
@@ -39,10 +39,10 @@ public sealed class CsvReportWriterTests
         try
         {
             // Act
-            writer.WriteReport(report, outputPath, columns, displayHeaders: true);
+            await writer.WriteReportAsync(report, outputPath, columns, displayHeaders: true);
 
             // Assert
-            var lines = File.ReadAllLines(outputPath.Value);
+            var lines = await File.ReadAllLinesAsync(outputPath.Value);
             lines.Should().ContainInOrder("Key,Summary", "APP-1,\"Fix \"\"CSV\"\", parser\"");
         }
         finally
@@ -56,7 +56,7 @@ public sealed class CsvReportWriterTests
 
     [Fact(DisplayName = "WriteReport omits headers when disabled")]
     [Trait("Category", "Unit")]
-    public void WriteReportWhenHeadersAreDisabledOmitsHeaderRow()
+    public async Task WriteReportWhenHeadersAreDisabledOmitsHeaderRow()
     {
         // Arrange
         var writer = new CsvReportWriter();
@@ -77,10 +77,10 @@ public sealed class CsvReportWriterTests
         try
         {
             // Act
-            writer.WriteReport(report, outputPath, columns, displayHeaders: false);
+            await writer.WriteReportAsync(report, outputPath, columns, displayHeaders: false);
 
             // Assert
-            var lines = File.ReadAllLines(outputPath.Value);
+            var lines = await File.ReadAllLinesAsync(outputPath.Value);
             lines.Should().ContainSingle().Which.Should().Be("Implement report");
         }
         finally

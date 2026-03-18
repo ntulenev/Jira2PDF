@@ -96,11 +96,12 @@ internal sealed class JiraApplication : IJiraApplication
 
                 await _jiraPresentationService.RunLoadingAsync(
                     "Preparing CSV...",
-                    setLoadingStatus =>
+                    async setLoadingStatus =>
                     {
                         setLoadingStatus("Writing CSV file...");
-                        _csvReportWriter.WriteReport(report, csvPath, outputColumns, _settings.Csv.DisplayHeaders);
-                        return Task.CompletedTask;
+                        await _csvReportWriter
+                            .WriteReportAsync(report, csvPath, outputColumns, _settings.Csv.DisplayHeaders)
+                            .ConfigureAwait(false);
                     }).ConfigureAwait(false);
 
                 _jiraPresentationService.ShowCsvSaved(csvPath);

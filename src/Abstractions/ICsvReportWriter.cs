@@ -15,7 +15,8 @@ internal interface ICsvReportWriter
     /// <param name="outputPath">Resolved CSV output path.</param>
     /// <param name="outputColumns">Selected output columns.</param>
     /// <param name="displayHeaders">Whether to include header row.</param>
-    void WriteReport(
+    /// <returns>Asynchronous operation task.</returns>
+    Task WriteReportAsync(
         JiraJqlReport report,
         CsvFilePath outputPath,
         IReadOnlyList<OutputColumn> outputColumns,

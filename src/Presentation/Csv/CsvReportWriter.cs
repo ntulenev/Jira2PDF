@@ -12,7 +12,7 @@ namespace JiraReport.Presentation.Csv;
 internal sealed class CsvReportWriter : ICsvReportWriter
 {
     /// <inheritdoc />
-    public void WriteReport(
+    public async Task WriteReportAsync(
         JiraJqlReport report,
         CsvFilePath outputPath,
         IReadOnlyList<OutputColumn> outputColumns,
@@ -27,16 +27,19 @@ internal sealed class CsvReportWriter : ICsvReportWriter
             _ = Directory.CreateDirectory(directoryPath);
         }
 
-        using var writer = new StreamWriter(outputPath.Value, append: false, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+        await using var writer = new StreamWriter(
+            outputPath.Value, append: false, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
 
         if (displayHeaders)
         {
-            writer.WriteLine(string.Join(",", outputColumns.Select(static column => Escape(column.Header.Value))));
+            await writer.WriteLineAsync(
+                string.Join(",", outputColumns.Select(static column => Escape(column.Header.Value)))).ConfigureAwait(false);
         }
 
         foreach (var issue in report.Issues)
         {
-            writer.WriteLine(string.Join(",", outputColumns.Select(column => Escape(column.Selector(issue).Value))));
+            await writer.WriteLineAsync(
+                string.Join(",", outputColumns.Select(column => Escape(column.Selector(issue).Value)))).ConfigureAwait(false);
         }
     }
 
