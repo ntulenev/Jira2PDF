@@ -9,6 +9,7 @@ using JiraReport.Models;
 using JiraReport.Models.Configuration;
 using JiraReport.Models.ValueObjects;
 using JiraReport.Presentation;
+using JiraReport.Presentation.Csv;
 using JiraReport.Presentation.Pdf;
 using JiraReport.Transport;
 
@@ -29,18 +30,25 @@ builder.Services
     .ValidateDataAnnotations()
     .ValidateOnStart();
 
+builder.Services
+    .AddOptions<CsvOptions>()
+    .Bind(builder.Configuration.GetSection("CSV"))
+    .ValidateOnStart();
+
 builder.Services.AddSingleton(sp =>
 {
-    var source = sp.GetRequiredService<IOptions<JiraOptions>>().Value;
-    var reports = ResolveReports(source.Reports);
+    var jiraSource = sp.GetRequiredService<IOptions<JiraOptions>>().Value;
+    var csvSource = sp.GetRequiredService<IOptions<CsvOptions>>().Value;
+    var reports = ResolveReports(jiraSource.Reports);
 
     var settings = new AppSettings(
-        new JiraBaseUrl(source.BaseUrl.ToString()),
-        new JiraEmail(source.Email),
-        new JiraApiToken(source.ApiToken),
-        Math.Clamp(source.MaxResultsPerPage, 1, 100),
-        source.RetryCount,
-        reports);
+        new JiraBaseUrl(jiraSource.BaseUrl.ToString()),
+        new JiraEmail(jiraSource.Email),
+        new JiraApiToken(jiraSource.ApiToken),
+        Math.Clamp(jiraSource.MaxResultsPerPage, 1, 100),
+        jiraSource.RetryCount,
+        reports,
+        new CsvSettings(csvSource.Enabled, csvSource.DisplayHeaders));
 
     return Options.Create(settings);
 });
@@ -62,6 +70,7 @@ builder.Services.AddTransient<IIssueMapper, IssueMapper>();
 builder.Services.AddTransient<IJiraApiClient, JiraApiClient>();
 builder.Services.AddTransient<IJiraLogicService, JiraLogicService>();
 builder.Services.AddTransient<IJiraPresentationService, SpectreJiraPresentationService>();
+builder.Services.AddTransient<ICsvReportWriter, CsvReportWriter>();
 builder.Services.AddTransient<IPdfContentComposer, PdfContentComposer>();
 builder.Services.AddTransient<IPdfReportFileStore, PdfReportFileStore>();
 builder.Services.AddTransient<IPdfReportRenderer, QuestPdfReportRenderer>();

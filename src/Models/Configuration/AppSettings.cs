@@ -11,10 +11,12 @@ namespace JiraReport.Models.Configuration;
 /// <param name="MaxResultsPerPage">Maximum page size for Jira search requests.</param>
 /// <param name="RetryCount">Retry count for transient failures.</param>
 /// <param name="Reports">Configured named reports.</param>
+/// <param name="Csv">CSV export settings.</param>
 internal sealed record AppSettings(
     JiraBaseUrl BaseUrl,
     JiraEmail Email,
     JiraApiToken ApiToken,
     int MaxResultsPerPage,
     int RetryCount,
-    IReadOnlyList<ReportConfig> Reports);
+    IReadOnlyList<ReportConfig> Reports,
+    CsvSettings Csv);

@@ -19,24 +19,28 @@ internal sealed class JiraApplication : IJiraApplication
     /// <param name="jiraLogicService">Domain logic service.</param>
     /// <param name="jiraPresentationService">Presentation service.</param>
     /// <param name="pdfReportRenderer">PDF report renderer.</param>
+    /// <param name="csvReportWriter">CSV report writer.</param>
     public JiraApplication(
         IOptions<AppSettings> options,
         IJiraApiClient jiraApiClient,
         IJiraLogicService jiraLogicService,
         IJiraPresentationService jiraPresentationService,
-        IPdfReportRenderer pdfReportRenderer)
+        IPdfReportRenderer pdfReportRenderer,
+        ICsvReportWriter csvReportWriter)
     {
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(jiraApiClient);
         ArgumentNullException.ThrowIfNull(jiraLogicService);
         ArgumentNullException.ThrowIfNull(jiraPresentationService);
         ArgumentNullException.ThrowIfNull(pdfReportRenderer);
+        ArgumentNullException.ThrowIfNull(csvReportWriter);
 
         _settings = options.Value;
         _jiraApiClient = jiraApiClient;
         _jiraLogicService = jiraLogicService;
         _jiraPresentationService = jiraPresentationService;
         _pdfReportRenderer = pdfReportRenderer;
+        _csvReportWriter = csvReportWriter;
     }
 
     /// <inheritdoc />
@@ -85,6 +89,22 @@ internal sealed class JiraApplication : IJiraApplication
                 }).ConfigureAwait(false);
 
             _jiraPresentationService.ShowPdfSaved(outputPath);
+
+            if (_settings.Csv.Enabled)
+            {
+                var csvPath = CsvFilePath.FromPdfPath(outputPath);
+
+                await _jiraPresentationService.RunLoadingAsync(
+                    "Preparing CSV...",
+                    setLoadingStatus =>
+                    {
+                        setLoadingStatus("Writing CSV file...");
+                        _csvReportWriter.WriteReport(report, csvPath, outputColumns, _settings.Csv.DisplayHeaders);
+                        return Task.CompletedTask;
+                    }).ConfigureAwait(false);
+
+                _jiraPresentationService.ShowCsvSaved(csvPath);
+            }
         }
         catch (HttpRequestException ex)
         {
@@ -109,4 +129,5 @@ internal sealed class JiraApplication : IJiraApplication
     private readonly IJiraLogicService _jiraLogicService;
     private readonly IJiraPresentationService _jiraPresentationService;
     private readonly IPdfReportRenderer _pdfReportRenderer;
+    private readonly ICsvReportWriter _csvReportWriter;
 }
