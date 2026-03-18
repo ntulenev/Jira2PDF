@@ -27,19 +27,21 @@ internal sealed class CsvReportWriter : ICsvReportWriter
             _ = Directory.CreateDirectory(directoryPath);
         }
 
-        await using var writer = new StreamWriter(
+        var writer = new StreamWriter(
             outputPath.Value, append: false, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
-
-        if (displayHeaders)
+        await using (writer.ConfigureAwait(false))
         {
-            await writer.WriteLineAsync(
-                string.Join(",", outputColumns.Select(static column => Escape(column.Header.Value)))).ConfigureAwait(false);
-        }
+            if (displayHeaders)
+            {
+                await writer.WriteLineAsync(
+                    string.Join(",", outputColumns.Select(static column => Escape(column.Header.Value)))).ConfigureAwait(false);
+            }
 
-        foreach (var issue in report.Issues)
-        {
-            await writer.WriteLineAsync(
-                string.Join(",", outputColumns.Select(column => Escape(column.Selector(issue).Value)))).ConfigureAwait(false);
+            foreach (var issue in report.Issues)
+            {
+                await writer.WriteLineAsync(
+                    string.Join(",", outputColumns.Select(column => Escape(column.Selector(issue).Value)))).ConfigureAwait(false);
+            }
         }
     }
 
