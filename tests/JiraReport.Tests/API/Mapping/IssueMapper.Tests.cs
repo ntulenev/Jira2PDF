@@ -98,6 +98,7 @@ public sealed class IssueMapperTests
         issue.GetFieldValue(new IssueKey("created")).Value.Should().Be("2026-02-28");
         issue.GetFieldValue(new IssueKey("issuetype")).Value.Should().Be("Bug");
         issue.GetFieldValue(new IssueKey("assignee")).Value.Should().Be("Jane Doe");
+        issue.GetFieldValue(new IssueKey("customfield_10200")).Value.Should().Be("Incident");
         issue.GetFieldValue(new IssueKey("customfield_10001")).Value.Should().Be("Backend, API");
         issue.GetFieldValue(new IssueKey("Labels")).Value.Should().Be("Backend, API");
         issue.GetFieldValues(new IssueKey("Labels")).Select(static value => value.Value).Should().ContainInOrder("Backend", "API");
@@ -112,6 +113,7 @@ public sealed class IssueMapperTests
               "created": "2026-02-28T10:30:00+00:00",
               "issuetype": { "name": "Bug" },
               "assignee": { "displayName": "Jane Doe" },
+              "customfield_10200": { "requestType": { "name": "Incident" } },
               "customfield_10001": ["Backend", "backend", { "name": "API" }, "", "-"]
             }
             """);

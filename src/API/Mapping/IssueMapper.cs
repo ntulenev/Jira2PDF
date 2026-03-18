@@ -169,5 +169,5 @@ internal sealed class IssueMapper : IIssueMapper
 
     private static string NormalizeFieldKey(string fieldKey) => fieldKey.Trim();
     private static readonly IReadOnlyList<string> _objectDisplayPropertyOrder =
-        ["displayName", "name", "value", "key"];
+        ["displayName", "requestType", "name", "value", "key"];
 }
