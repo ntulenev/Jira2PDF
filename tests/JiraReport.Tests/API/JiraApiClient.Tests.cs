@@ -276,6 +276,7 @@ public sealed class JiraApiClientTests
             new JiraApiToken("token"),
             maxResultsPerPage,
             0,
-            [new ReportConfig(new ReportName("Backlog"), new JqlQuery("project = APP"), [], [], new PdfReportName("Sprint report"))]);
+            [new ReportConfig(new ReportName("Backlog"), new JqlQuery("project = APP"), [], [], new PdfReportName("Sprint report"))],
+            new CsvSettings(false, false));
     }
 }
