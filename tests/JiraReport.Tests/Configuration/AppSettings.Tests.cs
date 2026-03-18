@@ -30,7 +30,8 @@ public sealed class AppSettingsTests
             new JiraApiToken("token"),
             50,
             3,
-            reports);
+            reports,
+            new CsvSettings(false, false));
 
         // Assert
         settings.BaseUrl.Value.Should().Be("https://example.test");
@@ -39,5 +40,6 @@ public sealed class AppSettingsTests
         settings.MaxResultsPerPage.Should().Be(50);
         settings.RetryCount.Should().Be(3);
         settings.Reports.Should().BeSameAs(reports);
+        settings.Csv.Should().Be(new CsvSettings(false, false));
     }
 }
