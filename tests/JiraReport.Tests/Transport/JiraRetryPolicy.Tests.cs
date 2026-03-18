@@ -99,6 +99,7 @@ public sealed class JiraRetryPolicyTests
             new JiraApiToken("token"),
             50,
             retryCount,
-            [new ReportConfig(new ReportName("Backlog"), new JqlQuery("project = APP"), [], [], new PdfReportName("Sprint report"))]);
+            [new ReportConfig(new ReportName("Backlog"), new JqlQuery("project = APP"), [], [], new PdfReportName("Sprint report"))],
+            new CsvSettings(false, false));
     }
 }
