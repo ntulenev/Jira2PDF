@@ -89,6 +89,12 @@ internal sealed class SpectreJiraPresentationService : IJiraPresentationService
     }
 
     /// <inheritdoc />
+    public void ShowCsvSaved(CsvFilePath csvPath)
+    {
+        AnsiConsole.MarkupLine($"[green]CSV report saved to:[/] {Markup.Escape(csvPath.Value)}");
+    }
+
+    /// <inheritdoc />
     public void ShowError(ErrorMessage errorMessage) =>
         AnsiConsole.MarkupLine($"[red]Failed to generate Jira report:[/] {Markup.Escape(errorMessage.Value)}");
 

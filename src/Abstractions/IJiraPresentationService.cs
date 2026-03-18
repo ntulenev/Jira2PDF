@@ -36,6 +36,12 @@ internal interface IJiraPresentationService
     void ShowPdfSaved(PdfFilePath pdfPath);
 
     /// <summary>
+    /// Displays message about saved CSV file.
+    /// </summary>
+    /// <param name="csvPath">Saved CSV path.</param>
+    void ShowCsvSaved(CsvFilePath csvPath);
+
+    /// <summary>
     /// Displays error message.
     /// </summary>
     /// <param name="errorMessage">Error details.</param>
