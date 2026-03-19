@@ -6,6 +6,7 @@ Jira2PDF is a .NET 10 console utility that:
 - loads Jira issues by JQL,
 - shows a Spectre.Console report in terminal,
 - generates a PDF report with the same data,
+- can optionally open the generated PDF after the workflow finishes,
 - optionally saves the same issue rows into CSV.
 
 
@@ -95,6 +96,9 @@ Main section: `Jira`
       }
     ]
   },
+  "PDF": {
+    "OpenAfterGeneration": false
+  },
   "CSV": {
     "Enabled": false,
     "DisplayHeaders": false
@@ -128,6 +132,11 @@ Each report item supports:
   For Jira multi-value fields (for example `components`), each item is counted separately in summary tables (based on Jira JSON arrays, not by splitting text on commas).
 - `PdfReportName`: required report title/file base name used for generated PDF name.
 
+### PDF Settings
+
+- `PDF`: optional top-level section for generated PDF behavior.
+- `OpenAfterGeneration`: when `true`, opens the generated PDF in the system default application after the workflow finishes.
+
 ### CSV Settings
 
 - `CSV`: optional top-level section for raw CSV export.
@@ -148,7 +157,8 @@ You can use Jira field names (as in JQL) or field keys (for example `customfield
   - issues table (up to 50 rows).
 - PDF:
   - full report with all issues,
-  - issue keys are hyperlinks to Jira.
+  - issue keys are hyperlinks to Jira,
+  - optional auto-open after generation.
 - CSV:
   - optional raw export of all issues,
   - saved next to the PDF as `*_raw.csv`.

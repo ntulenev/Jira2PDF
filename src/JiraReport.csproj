@@ -20,6 +20,10 @@
 	</PropertyGroup>
 
 	<ItemGroup>
+	  <Content Include="task_document_paper_descending_priority_tasks_documents_icon_142254.ico" />
+	</ItemGroup>
+
+	<ItemGroup>
 		<PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.0" />
 		<PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.0" />
 		<PackageReference Include="Microsoft.Extensions.Http" Version="10.0.0" />
@@ -31,6 +35,7 @@
 
 	<PropertyGroup>
 		<NoWarn>CA1515;CA1812</NoWarn>
+		<ApplicationIcon>task_document_paper_descending_priority_tasks_documents_icon_142254.ico</ApplicationIcon>
 	</PropertyGroup>
 
 	<ItemGroup>

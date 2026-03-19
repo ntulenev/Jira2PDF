@@ -276,6 +276,7 @@ public sealed class JiraApiClientTests
             maxResultsPerPage,
             0,
             [new ReportConfig(new ReportName("Backlog"), new JqlQuery("project = APP"), [], [], new PdfReportName("Sprint report"))],
+            new PdfSettings(false),
             new CsvSettings(false, false));
     }
 }

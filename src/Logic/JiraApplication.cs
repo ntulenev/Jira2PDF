@@ -19,6 +19,7 @@ internal sealed class JiraApplication : IJiraApplication
     /// <param name="jiraLogicService">Domain logic service.</param>
     /// <param name="jiraPresentationService">Presentation service.</param>
     /// <param name="pdfReportRenderer">PDF report renderer.</param>
+    /// <param name="pdfReportLauncher">PDF report launcher.</param>
     /// <param name="csvReportWriter">CSV report writer.</param>
     public JiraApplication(
         IOptions<AppSettings> options,
@@ -26,6 +27,7 @@ internal sealed class JiraApplication : IJiraApplication
         IJiraLogicService jiraLogicService,
         IJiraPresentationService jiraPresentationService,
         IPdfReportRenderer pdfReportRenderer,
+        IPdfReportLauncher pdfReportLauncher,
         ICsvReportWriter csvReportWriter)
     {
         ArgumentNullException.ThrowIfNull(options);
@@ -33,6 +35,7 @@ internal sealed class JiraApplication : IJiraApplication
         ArgumentNullException.ThrowIfNull(jiraLogicService);
         ArgumentNullException.ThrowIfNull(jiraPresentationService);
         ArgumentNullException.ThrowIfNull(pdfReportRenderer);
+        ArgumentNullException.ThrowIfNull(pdfReportLauncher);
         ArgumentNullException.ThrowIfNull(csvReportWriter);
 
         _settings = options.Value;
@@ -40,6 +43,7 @@ internal sealed class JiraApplication : IJiraApplication
         _jiraLogicService = jiraLogicService;
         _jiraPresentationService = jiraPresentationService;
         _pdfReportRenderer = pdfReportRenderer;
+        _pdfReportLauncher = pdfReportLauncher;
         _csvReportWriter = csvReportWriter;
     }
 
@@ -106,6 +110,11 @@ internal sealed class JiraApplication : IJiraApplication
 
                 _jiraPresentationService.ShowCsvSaved(csvPath);
             }
+
+            if (_settings.Pdf.OpenAfterGeneration)
+            {
+                _pdfReportLauncher.Open(outputPath);
+            }
         }
         catch (HttpRequestException ex)
         {
@@ -130,5 +139,6 @@ internal sealed class JiraApplication : IJiraApplication
     private readonly IJiraLogicService _jiraLogicService;
     private readonly IJiraPresentationService _jiraPresentationService;
     private readonly IPdfReportRenderer _pdfReportRenderer;
+    private readonly IPdfReportLauncher _pdfReportLauncher;
     private readonly ICsvReportWriter _csvReportWriter;
 }

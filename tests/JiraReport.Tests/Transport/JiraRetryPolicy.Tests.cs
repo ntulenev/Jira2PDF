@@ -100,6 +100,7 @@ public sealed class JiraRetryPolicyTests
             50,
             retryCount,
             [new ReportConfig(new ReportName("Backlog"), new JqlQuery("project = APP"), [], [], new PdfReportName("Sprint report"))],
+            new PdfSettings(false),
             new CsvSettings(false, false));
     }
 }

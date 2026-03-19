@@ -31,6 +31,7 @@ public sealed class AppSettingsTests
             50,
             3,
             reports,
+            new PdfSettings(false),
             new CsvSettings(false, false));
 
         // Assert
@@ -40,6 +41,7 @@ public sealed class AppSettingsTests
         settings.MaxResultsPerPage.Should().Be(50);
         settings.RetryCount.Should().Be(3);
         settings.Reports.Should().BeSameAs(reports);
+        settings.Pdf.Should().Be(new PdfSettings(false));
         settings.Csv.Should().Be(new CsvSettings(false, false));
     }
 }

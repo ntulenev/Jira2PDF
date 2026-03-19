@@ -35,9 +35,15 @@ builder.Services
     .Bind(builder.Configuration.GetSection("CSV"))
     .ValidateOnStart();
 
+builder.Services
+    .AddOptions<PdfOptions>()
+    .Bind(builder.Configuration.GetSection("PDF"))
+    .ValidateOnStart();
+
 builder.Services.AddSingleton(sp =>
 {
     var jiraSource = sp.GetRequiredService<IOptions<JiraOptions>>().Value;
+    var pdfSource = sp.GetRequiredService<IOptions<PdfOptions>>().Value;
     var csvSource = sp.GetRequiredService<IOptions<CsvOptions>>().Value;
     var reports = ResolveReports(jiraSource.Reports);
 
@@ -48,6 +54,7 @@ builder.Services.AddSingleton(sp =>
         Math.Clamp(jiraSource.MaxResultsPerPage, 1, 100),
         jiraSource.RetryCount,
         reports,
+        new PdfSettings(pdfSource.OpenAfterGeneration),
         new CsvSettings(csvSource.Enabled, csvSource.DisplayHeaders));
 
     return Options.Create(settings);
@@ -73,6 +80,7 @@ builder.Services.AddTransient<IJiraPresentationService, SpectreJiraPresentationS
 builder.Services.AddTransient<ICsvReportWriter, CsvReportWriter>();
 builder.Services.AddTransient<IPdfContentComposer, PdfContentComposer>();
 builder.Services.AddTransient<IPdfReportFileStore, PdfReportFileStore>();
+builder.Services.AddTransient<IPdfReportLauncher, PdfReportLauncher>();
 builder.Services.AddTransient<IPdfReportRenderer, QuestPdfReportRenderer>();
 builder.Services.AddTransient<IJiraApplication, JiraApplication>();
 

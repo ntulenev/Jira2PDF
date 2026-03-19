@@ -11,6 +11,7 @@ namespace JiraReport.Models.Configuration;
 /// <param name="MaxResultsPerPage">Maximum page size for Jira search requests.</param>
 /// <param name="RetryCount">Retry count for transient failures.</param>
 /// <param name="Reports">Configured named reports.</param>
+/// <param name="Pdf">PDF export settings.</param>
 /// <param name="Csv">CSV export settings.</param>
 internal sealed record AppSettings(
     JiraBaseUrl BaseUrl,
@@ -19,4 +20,5 @@ internal sealed record AppSettings(
     int MaxResultsPerPage,
     int RetryCount,
     IReadOnlyList<ReportConfig> Reports,
+    PdfSettings Pdf,
     CsvSettings Csv);
