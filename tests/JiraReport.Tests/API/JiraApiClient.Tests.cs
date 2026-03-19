@@ -86,9 +86,9 @@ public sealed class JiraApiClientTests
             .ThrowAsync<ArgumentNullException>();
     }
 
-    [Fact(DisplayName = "SearchIssuesAsync resolves fields paginates and returns distinct sorted issues")]
+    [Fact(DisplayName = "SearchIssuesAsync resolves fields paginates and preserves Jira result order")]
     [Trait("Category", "Unit")]
-    public async Task SearchIssuesAsyncWhenJqlEndpointIsAvailableReturnsDistinctSortedIssues()
+    public async Task SearchIssuesAsyncWhenJqlEndpointIsAvailablePreservesReturnedIssueOrder()
     {
         // Arrange
         using var cts = new CancellationTokenSource();
@@ -151,8 +151,7 @@ public sealed class JiraApiClientTests
                     && aliases["customfield_10001"].Contains("Story Points"))))
             .Returns(
             [
-                new JiraIssue(new IssueKey("APP-2"), new Dictionary<IssueKey, FieldValue>()),
-                new JiraIssue(new IssueKey("app-2"), new Dictionary<IssueKey, FieldValue>())
+                new JiraIssue(new IssueKey("APP-2"), new Dictionary<IssueKey, FieldValue>())
             ]);
 
         issueMapper.Setup(m => m.MapIssues(
@@ -174,7 +173,7 @@ public sealed class JiraApiClientTests
             cts.Token);
 
         // Assert
-        issues.Select(static issue => issue.Key.Value).Should().ContainInOrder("APP-1", "APP-2");
+        issues.Select(static issue => issue.Key.Value).Should().ContainInOrder("APP-2", "APP-1");
     }
 
     [Fact(DisplayName = "SearchIssuesAsync falls back to startAt endpoint when page token endpoint is not found")]

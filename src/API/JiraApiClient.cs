@@ -98,9 +98,7 @@ internal sealed class JiraApiClient : IJiraApiClient
             }
         }
 
-        return [.. issues
-            .DistinctBy(static issue => issue.Key.Value, StringComparer.OrdinalIgnoreCase)
-            .OrderBy(static issue => issue.Key.Value, StringComparer.OrdinalIgnoreCase)];
+        return issues;
     }
 
     private async Task<IReadOnlyList<JiraIssue>> SearchWithStartAtAsync(
@@ -135,9 +133,7 @@ internal sealed class JiraApiClient : IJiraApiClient
             }
         }
 
-        return [.. issues
-            .DistinctBy(static issue => issue.Key.Value, StringComparer.OrdinalIgnoreCase)
-            .OrderBy(static issue => issue.Key.Value, StringComparer.OrdinalIgnoreCase)];
+        return issues;
     }
 
     private async Task<JiraSearchResponse> GetSearchPageAsync(string searchUrl, CancellationToken cancellationToken)
