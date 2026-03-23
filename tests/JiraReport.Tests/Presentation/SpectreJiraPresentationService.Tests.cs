@@ -1,8 +1,11 @@
 using FluentAssertions;
 
 using JiraReport.Models;
+using JiraReport.Models.Configuration;
 using JiraReport.Models.ValueObjects;
 using JiraReport.Presentation;
+
+using Microsoft.Extensions.Options;
 
 using Spectre.Console;
 using Spectre.Console.Testing;
@@ -16,7 +19,7 @@ public sealed class SpectreJiraPresentationServiceTests
     public void SelectReportConfigWhenSourceReportsAreNullThrowsArgumentNullException()
     {
         // Arrange
-        var service = new SpectreJiraPresentationService();
+        var service = CreateService();
         IReadOnlyList<ReportConfig> sourceReports = null!;
 
         // Act
@@ -32,7 +35,7 @@ public sealed class SpectreJiraPresentationServiceTests
     public void SelectReportConfigWhenSourceReportsAreEmptyThrowsArgumentException()
     {
         // Arrange
-        var service = new SpectreJiraPresentationService();
+        var service = CreateService();
 
         // Act
         Action act = () => _ = service.SelectReportConfig([]);
@@ -47,7 +50,7 @@ public sealed class SpectreJiraPresentationServiceTests
     public async Task SelectReportConfigWhenPromptIsConfirmedReturnsAlphabeticallyFirstReport()
     {
         // Arrange
-        var service = new SpectreJiraPresentationService();
+        var service = CreateService();
         var reports = new[]
         {
             new ReportConfig(new ReportName("Zulu"), new JqlQuery("project = ZULU"), [], [], new PdfReportName("Zulu")),
@@ -70,7 +73,7 @@ public sealed class SpectreJiraPresentationServiceTests
     public async Task ResolvePdfPathWhenCustomRelativePathIsEnteredAppendsExtensionAndReturnsFullPath()
     {
         // Arrange
-        var service = new SpectreJiraPresentationService();
+        var service = CreateService();
 
         // Act
         var path = await RunWithTestConsoleAsync(console =>
@@ -89,7 +92,7 @@ public sealed class SpectreJiraPresentationServiceTests
     public async Task ShowReportWhenCalledWritesReportSummaryAndIssuesTable()
     {
         // Arrange
-        var service = new SpectreJiraPresentationService();
+        var service = CreateService();
         var report = new JiraJqlReport(
             new PdfReportName("Sprint report"),
             new ReportName("Backlog"),
@@ -125,7 +128,7 @@ public sealed class SpectreJiraPresentationServiceTests
     public async Task ShowPdfSavedWhenCalledWritesPdfPathMessage()
     {
         // Arrange
-        var service = new SpectreJiraPresentationService();
+        var service = CreateService();
 
         // Act
         var output = await CaptureOutputAsync(() =>
@@ -143,7 +146,7 @@ public sealed class SpectreJiraPresentationServiceTests
     public async Task ShowCsvSavedWhenCalledWritesCsvPathMessage()
     {
         // Arrange
-        var service = new SpectreJiraPresentationService();
+        var service = CreateService();
 
         // Act
         var output = await CaptureOutputAsync(() =>
@@ -161,7 +164,7 @@ public sealed class SpectreJiraPresentationServiceTests
     public async Task ShowErrorWhenCalledWritesErrorMessage()
     {
         // Arrange
-        var service = new SpectreJiraPresentationService();
+        var service = CreateService();
 
         // Act
         var output = await CaptureOutputAsync(() =>
@@ -179,7 +182,7 @@ public sealed class SpectreJiraPresentationServiceTests
     public async Task RunLoadingAsyncWhenActionSucceedsReturnsResult()
     {
         // Arrange
-        var service = new SpectreJiraPresentationService();
+        var service = CreateService();
         var updates = new List<string>();
 
         // Act
@@ -202,7 +205,7 @@ public sealed class SpectreJiraPresentationServiceTests
     public async Task RunLoadingAsyncWithoutResultWhenActionSucceedsExecutesAction()
     {
         // Arrange
-        var service = new SpectreJiraPresentationService();
+        var service = CreateService();
         var wasCalled = false;
 
         // Act
@@ -257,5 +260,21 @@ public sealed class SpectreJiraPresentationServiceTests
         {
             AnsiConsole.Console = original;
         }
+    }
+
+    private static SpectreJiraPresentationService CreateService(int reportSelectionPageSize = 15)
+    {
+        var settings = new AppSettings(
+            new JiraBaseUrl("https://example.test"),
+            new JiraEmail("user@example.test"),
+            new JiraApiToken("token"),
+            50,
+            3,
+            [new ReportConfig(new ReportName("Backlog"), new JqlQuery("project = APP"), [], [], new PdfReportName("Sprint report"))],
+            new PdfSettings(false),
+            new CsvSettings(false, false),
+            new UiSettings(reportSelectionPageSize));
+
+        return new SpectreJiraPresentationService(Options.Create(settings));
     }
 }

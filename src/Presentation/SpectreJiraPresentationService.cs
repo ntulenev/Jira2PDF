@@ -2,7 +2,10 @@ using System.Globalization;
 
 using JiraReport.Abstractions;
 using JiraReport.Models;
+using JiraReport.Models.Configuration;
 using JiraReport.Models.ValueObjects;
+
+using Microsoft.Extensions.Options;
 
 using Spectre.Console;
 
@@ -13,6 +16,12 @@ namespace JiraReport.Presentation;
 /// </summary>
 internal sealed class SpectreJiraPresentationService : IJiraPresentationService
 {
+    public SpectreJiraPresentationService(IOptions<AppSettings> options)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+        _reportSelectionPageSize = options.Value.Ui.ReportSelectionPageSize;
+    }
+
     /// <inheritdoc />
     public ReportConfig SelectReportConfig(IReadOnlyList<ReportConfig> sourceReports)
     {
@@ -30,7 +39,7 @@ internal sealed class SpectreJiraPresentationService : IJiraPresentationService
         var selectedName = AnsiConsole.Prompt(
             new SelectionPrompt<string>()
                 .Title("Select report config:")
-                .PageSize(10)
+                .PageSize(_reportSelectionPageSize)
                 .MoreChoicesText("[grey](Move up and down to reveal more options)[/]")
                 .AddChoices(nameToConfig.Keys));
 
@@ -195,4 +204,5 @@ internal sealed class SpectreJiraPresentationService : IJiraPresentationService
         fieldKey == new IssueKey("summary") ? 52 : 20;
 
     private const int CONSOLE_ISSUE_LIMIT = 50;
+    private readonly int _reportSelectionPageSize;
 }

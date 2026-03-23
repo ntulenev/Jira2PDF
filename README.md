@@ -13,6 +13,7 @@ Jira2PDF is a .NET 10 console utility that:
 ## Features
 
 - Interactive report selection from `Jira:Reports`.
+- Configurable report selector page size via top-level `UI` section.
 - Loading UI while data is being prepared (`Preparing report...`, `Preparing PDF...`).
 - Console summary:
   - total issues,
@@ -103,6 +104,9 @@ Main section: `Jira`
     "Enabled": false,
     "DisplayHeaders": false
   },
+  "UI": {
+    "ReportSelectionPageSize": 15
+  },
   "Logging": {
     "LogLevel": {
       "Default": "Warning",
@@ -142,6 +146,12 @@ Each report item supports:
 - `CSV`: optional top-level section for raw CSV export.
 - `Enabled`: when `true`, saves a CSV copy of all loaded issues in addition to the PDF.
 - `DisplayHeaders`: when `true`, writes the configured column headers as the first CSV row.
+
+### UI Settings
+
+- `UI`: optional top-level section for console UI behavior.
+- `ReportSelectionPageSize`: optional number of report items visible in the interactive selector (`1..100`).
+  When omitted, the application uses the default value `15`.
 
 When enabled, the CSV file name is derived from the final PDF path by adding `_raw` before `.csv`.
 Example: `APP_HighPriority_Active_20260318_091500.pdf` -> `APP_HighPriority_Active_20260318_091500_raw.csv`.

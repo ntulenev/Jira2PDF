@@ -36,6 +36,12 @@ builder.Services
     .ValidateOnStart();
 
 builder.Services
+    .AddOptions<UiOptions>()
+    .Bind(builder.Configuration.GetSection("UI"))
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+
+builder.Services
     .AddOptions<PdfOptions>()
     .Bind(builder.Configuration.GetSection("PDF"))
     .ValidateOnStart();
@@ -45,6 +51,7 @@ builder.Services.AddSingleton(sp =>
     var jiraSource = sp.GetRequiredService<IOptions<JiraOptions>>().Value;
     var pdfSource = sp.GetRequiredService<IOptions<PdfOptions>>().Value;
     var csvSource = sp.GetRequiredService<IOptions<CsvOptions>>().Value;
+    var uiSource = sp.GetRequiredService<IOptions<UiOptions>>().Value;
     var reports = ResolveReports(jiraSource.Reports);
 
     var settings = new AppSettings(
@@ -55,7 +62,10 @@ builder.Services.AddSingleton(sp =>
         jiraSource.RetryCount,
         reports,
         new PdfSettings(pdfSource.OpenAfterGeneration),
-        new CsvSettings(csvSource.Enabled, csvSource.DisplayHeaders));
+        new CsvSettings(csvSource.Enabled, csvSource.DisplayHeaders),
+        uiSource.ReportSelectionPageSize is int pageSize
+            ? new UiSettings(pageSize)
+            : null);
 
     return Options.Create(settings);
 });
