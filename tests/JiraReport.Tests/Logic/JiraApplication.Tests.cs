@@ -191,7 +191,9 @@ public sealed class JiraApplicationTests
             .ReturnsAsync(issues);
 
         var jiraLogicService = new Mock<IJiraLogicService>(MockBehavior.Strict);
-        jiraLogicService.Setup(service => service.ResolveOutputColumns(selectedReport.OutputFields))
+        jiraLogicService.Setup(service => service.ResolveOutputColumns(
+                selectedReport.OutputFields,
+                selectedReport.OutputFieldsAliases))
             .Returns(outputColumns);
         jiraLogicService.Setup(service => service.ResolveRequestedIssueFields(selectedReport.OutputFields, selectedReport.CountFields))
             .Returns(requestedFields);
@@ -202,7 +204,8 @@ public sealed class JiraApplicationTests
                 selectedReport.Name,
                 selectedReport.Jql,
                 issues,
-                selectedReport.CountFields))
+                selectedReport.CountFields,
+                selectedReport.CountFieldsAliases))
             .Returns(report);
 
         var jiraPresentationService = new Mock<IJiraPresentationService>(MockBehavior.Strict);
@@ -278,7 +281,9 @@ public sealed class JiraApplicationTests
             .ReturnsAsync(issues);
 
         var jiraLogicService = new Mock<IJiraLogicService>(MockBehavior.Strict);
-        jiraLogicService.Setup(service => service.ResolveOutputColumns(selectedReport.OutputFields))
+        jiraLogicService.Setup(service => service.ResolveOutputColumns(
+                selectedReport.OutputFields,
+                selectedReport.OutputFieldsAliases))
             .Returns(outputColumns);
         jiraLogicService.Setup(service => service.ResolveRequestedIssueFields(selectedReport.OutputFields, selectedReport.CountFields))
             .Returns(requestedFields);
@@ -289,7 +294,8 @@ public sealed class JiraApplicationTests
                 selectedReport.Name,
                 selectedReport.Jql,
                 issues,
-                selectedReport.CountFields))
+                selectedReport.CountFields,
+                selectedReport.CountFieldsAliases))
             .Returns(report);
 
         var jiraPresentationService = new Mock<IJiraPresentationService>(MockBehavior.Strict);
@@ -371,7 +377,9 @@ public sealed class JiraApplicationTests
             .ReturnsAsync(issues);
 
         var jiraLogicService = new Mock<IJiraLogicService>(MockBehavior.Strict);
-        jiraLogicService.Setup(service => service.ResolveOutputColumns(selectedReport.OutputFields))
+        jiraLogicService.Setup(service => service.ResolveOutputColumns(
+                selectedReport.OutputFields,
+                selectedReport.OutputFieldsAliases))
             .Returns(outputColumns);
         jiraLogicService.Setup(service => service.ResolveRequestedIssueFields(selectedReport.OutputFields, selectedReport.CountFields))
             .Returns(requestedFields);
@@ -382,7 +390,8 @@ public sealed class JiraApplicationTests
                 selectedReport.Name,
                 selectedReport.Jql,
                 issues,
-                selectedReport.CountFields))
+                selectedReport.CountFields,
+                selectedReport.CountFieldsAliases))
             .Returns(report);
 
         var jiraPresentationService = new Mock<IJiraPresentationService>(MockBehavior.Strict);
@@ -448,7 +457,9 @@ public sealed class JiraApplicationTests
             .ThrowsAsync(new HttpRequestException("Jira failed."));
 
         var jiraLogicService = new Mock<IJiraLogicService>(MockBehavior.Strict);
-        jiraLogicService.Setup(service => service.ResolveOutputColumns(selectedReport.OutputFields))
+        jiraLogicService.Setup(service => service.ResolveOutputColumns(
+                selectedReport.OutputFields,
+                selectedReport.OutputFieldsAliases))
             .Returns(Array.Empty<OutputColumn>());
         jiraLogicService.Setup(service => service.ResolveRequestedIssueFields(selectedReport.OutputFields, selectedReport.CountFields))
             .Returns(Array.Empty<IssueFieldName>());

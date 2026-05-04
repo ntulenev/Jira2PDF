@@ -176,6 +176,70 @@ public sealed class JiraApiClientTests
         issues.Select(static issue => issue.Key.Value).Should().ContainInOrder("APP-2", "APP-1");
     }
 
+    [Fact(DisplayName = "SearchIssuesAsync requests all custom fields with duplicate display names")]
+    [Trait("Category", "Unit")]
+    public async Task SearchIssuesAsyncWhenDisplayNameMatchesMultipleCustomFieldsRequestsAllCandidates()
+    {
+        // Arrange
+        using var cts = new CancellationTokenSource();
+        var transport = new Mock<IJiraTransport>(MockBehavior.Strict);
+        var issueMapper = new Mock<IIssueMapper>(MockBehavior.Strict);
+
+        transport.Setup(t => t.GetAsync<List<JiraFieldDefinitionResponse>>(
+                It.Is<Uri>(uri => uri.OriginalString == "rest/api/3/field"),
+                cts.Token))
+            .ReturnsAsync(
+            [
+                new JiraFieldDefinitionResponse
+                {
+                    Id = "customfield_20000",
+                    Key = "customfield_20000",
+                    Name = "Sport",
+                    ClauseNames = ["cf[20000]", "Sport"]
+                },
+                new JiraFieldDefinitionResponse
+                {
+                    Id = "customfield_11868",
+                    Key = "customfield_11868",
+                    Name = "Sport",
+                    ClauseNames = ["cf[11868]", "Sport"]
+                }
+            ]);
+
+        var page = new JiraSearchResponse
+        {
+            Issues = [new JiraIssueResponse { Key = "APP-1" }],
+            IsLast = true
+        };
+
+        transport.Setup(t => t.GetAsync<JiraSearchResponse>(
+                It.Is<Uri>(uri =>
+                    uri.OriginalString.Contains("rest/api/3/search/jql?", StringComparison.Ordinal)
+                    && uri.OriginalString.Contains("fields=customfield_20000%2Ccustomfield_11868", StringComparison.Ordinal)),
+                cts.Token))
+            .ReturnsAsync(page);
+
+        issueMapper.Setup(m => m.MapIssues(
+                page,
+                It.Is<IReadOnlyDictionary<string, IReadOnlyList<string>>>(aliases =>
+                    aliases.ContainsKey("customfield_20000")
+                    && aliases["customfield_20000"].Contains("Sport")
+                    && aliases.ContainsKey("customfield_11868")
+                    && aliases["customfield_11868"].Contains("Sport"))))
+            .Returns([new JiraIssue(new IssueKey("APP-1"), new Dictionary<IssueKey, FieldValue>())]);
+
+        var client = new JiraApiClient(transport.Object, Options.Create(CreateSettings()), issueMapper.Object);
+
+        // Act
+        var issues = await client.SearchIssuesAsync(
+            new JqlQuery("project = APP"),
+            [new IssueFieldName("Sport")],
+            cts.Token);
+
+        // Assert
+        issues.Should().ContainSingle();
+    }
+
     [Fact(DisplayName = "SearchIssuesAsync falls back to startAt endpoint when page token endpoint is not found")]
     [Trait("Category", "Unit")]
     public async Task SearchIssuesAsyncWhenJqlEndpointIsNotFoundFallsBackToStartAtEndpoint()

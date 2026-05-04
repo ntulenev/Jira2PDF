@@ -55,7 +55,9 @@ internal sealed class JiraApplication : IJiraApplication
             var selectedReportConfig = _jiraPresentationService.SelectReportConfig(_settings.Reports);
             var jql = selectedReportConfig.Jql;
 
-            var outputColumns = _jiraLogicService.ResolveOutputColumns(selectedReportConfig.OutputFields);
+            var outputColumns = _jiraLogicService.ResolveOutputColumns(
+                selectedReportConfig.OutputFields,
+                selectedReportConfig.OutputFieldsAliases);
             var requestedIssueFields = _jiraLogicService.ResolveRequestedIssueFields(
                 selectedReportConfig.OutputFields,
                 selectedReportConfig.CountFields);
@@ -78,7 +80,8 @@ internal sealed class JiraApplication : IJiraApplication
                         selectedReportConfig.Name,
                         jql,
                         issues,
-                        selectedReportConfig.CountFields);
+                        selectedReportConfig.CountFields,
+                        selectedReportConfig.CountFieldsAliases);
                 }).ConfigureAwait(false);
 
             _jiraPresentationService.ShowReport(report, outputColumns);

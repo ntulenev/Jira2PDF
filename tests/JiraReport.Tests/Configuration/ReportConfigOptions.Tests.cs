@@ -18,7 +18,9 @@ public sealed class ReportConfigOptionsTests
             Name = "Backlog",
             Jql = "project = APP",
             OutputFields = ["summary"],
+            OutputFieldsAliases = new Dictionary<string, string> { ["customfield_11868"] = "Sport" },
             CountFields = ["status"],
+            CountFieldsAliases = new Dictionary<string, string> { ["customfield_11854"] = "Roadmap" },
             PdfReportName = "Sprint report"
         };
 
@@ -28,7 +30,9 @@ public sealed class ReportConfigOptionsTests
         // Assert
         results.Should().BeEmpty();
         options.OutputFields.Should().ContainSingle().Which.Should().Be("summary");
+        options.OutputFieldsAliases.Should().ContainKey("customfield_11868").WhoseValue.Should().Be("Sport");
         options.CountFields.Should().ContainSingle().Which.Should().Be("status");
+        options.CountFieldsAliases.Should().ContainKey("customfield_11854").WhoseValue.Should().Be("Roadmap");
     }
 
     [Fact(DisplayName = "Validator reports missing name")]

@@ -10,7 +10,9 @@ namespace JiraReport.Logic;
 internal sealed class JiraLogicService : IJiraLogicService
 {
     /// <inheritdoc />
-    public IReadOnlyList<OutputColumn> ResolveOutputColumns(IReadOnlyList<IssueFieldName>? configuredFields)
+    public IReadOnlyList<OutputColumn> ResolveOutputColumns(
+        IReadOnlyList<IssueFieldName>? configuredFields,
+        IReadOnlyDictionary<string, string>? configuredFieldAliases = null)
     {
         var fieldKeys = ResolveConfiguredFieldKeys(configuredFields, _defaultOutputOrder);
         var columns = new List<OutputColumn>(fieldKeys.Count);
@@ -19,9 +21,12 @@ internal sealed class JiraLogicService : IJiraLogicService
         {
             var key = fieldKey.Value;
             var issueFieldKey = new IssueKey(key);
+            var header = TryGetFieldAlias(key, configuredFieldAliases, out var alias)
+                ? new OutputColumnHeader(alias)
+                : OutputColumnHeader.FromFieldKey(key);
             columns.Add(new OutputColumn(
                 issueFieldKey,
-                OutputColumnHeader.FromFieldKey(key),
+                header,
                 issue => issue.GetFieldValue(issueFieldKey)));
         }
 
@@ -68,26 +73,32 @@ internal sealed class JiraLogicService : IJiraLogicService
         ReportName configName,
         JqlQuery jql,
         IReadOnlyList<JiraIssue> issues,
-        IReadOnlyList<IssueFieldName>? configuredCountFields)
+        IReadOnlyList<IssueFieldName>? configuredCountFields,
+        IReadOnlyDictionary<string, string>? configuredCountFieldAliases = null)
     {
         ArgumentNullException.ThrowIfNull(issues);
 
-        var countTables = ResolveCountTables(issues, configuredCountFields);
+        var countTables = ResolveCountTables(issues, configuredCountFields, configuredCountFieldAliases);
         return new JiraJqlReport(reportTitle, configName, jql, DateTimeOffset.Now, issues, countTables);
     }
 
     private static List<CountTable> ResolveCountTables(
         IReadOnlyList<JiraIssue> issues,
-        IReadOnlyList<IssueFieldName>? configuredCountFields)
+        IReadOnlyList<IssueFieldName>? configuredCountFields,
+        IReadOnlyDictionary<string, string>? configuredCountFieldAliases)
     {
         var countFieldKeys = ResolveCountFieldKeys(configuredCountFields);
         var tables = new List<CountTable>();
 
         foreach (var countFieldKey in countFieldKeys)
         {
-            var issueFieldKey = new IssueKey(countFieldKey.Value);
+            var key = countFieldKey.Value;
+            var issueFieldKey = new IssueKey(key);
+            var displayName = TryGetFieldAlias(key, configuredCountFieldAliases, out var alias)
+                ? alias
+                : OutputColumnHeader.FromFieldKey(key).Value;
             tables.Add(new CountTable(
-                $"By {OutputColumnHeader.FromFieldKey(countFieldKey.Value).Value}",
+                $"By {displayName}",
                 GroupByCount(issues, issueFieldKey)));
         }
 
@@ -163,6 +174,21 @@ internal sealed class JiraLogicService : IJiraLogicService
         }
 
         return [.. defaultFields];
+    }
+
+    private static bool TryGetFieldAlias(
+        string fieldKey,
+        IReadOnlyDictionary<string, string>? configuredFieldAliases,
+        out string alias)
+    {
+        alias = string.Empty;
+        if (configuredFieldAliases is null || configuredFieldAliases.Count == 0)
+        {
+            return false;
+        }
+
+        return configuredFieldAliases.TryGetValue(fieldKey, out alias!) &&
+            !string.IsNullOrWhiteSpace(alias);
     }
 
     private static readonly IReadOnlyList<IssueFieldName> _defaultOutputOrder =

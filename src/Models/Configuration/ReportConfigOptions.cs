@@ -25,9 +25,19 @@ internal sealed class ReportConfigOptions
     public IReadOnlyList<string>? OutputFields { get; init; }
 
     /// <summary>
+    /// Gets optional display aliases for requested output fields.
+    /// </summary>
+    public IReadOnlyDictionary<string, string>? OutputFieldsAliases { get; init; }
+
+    /// <summary>
     /// Gets requested grouped count fields.
     /// </summary>
     public IReadOnlyList<string>? CountFields { get; init; }
+
+    /// <summary>
+    /// Gets optional display aliases for requested grouped count fields.
+    /// </summary>
+    public IReadOnlyDictionary<string, string>? CountFieldsAliases { get; init; }
 
     /// <summary>
     /// Gets required PDF report title/file base name.

@@ -111,7 +111,9 @@ static IReadOnlyList<ReportConfig> ResolveReports(IReadOnlyList<ReportConfigOpti
             new JqlQuery(report.Jql.Trim()),
             report.OutputFields is null ? [] : [.. report.OutputFields.Select(static field => new IssueFieldName(field))],
             report.CountFields is null ? [] : [.. report.CountFields.Select(static field => new IssueFieldName(field))],
-            new PdfReportName(report.PdfReportName.Trim())))
+            new PdfReportName(report.PdfReportName.Trim()),
+            report.OutputFieldsAliases,
+            report.CountFieldsAliases))
         .ToList();
 
     if (reports.Count == 0)

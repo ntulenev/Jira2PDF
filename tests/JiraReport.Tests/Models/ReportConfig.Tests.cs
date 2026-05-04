@@ -54,6 +54,8 @@ public sealed class ReportConfigTests
         // Arrange
         var outputFields = new List<IssueFieldName> { new("summary") };
         var countFields = new List<IssueFieldName> { new("status") };
+        var outputAliases = new Dictionary<string, string> { [" customfield_11868 "] = " Sport " };
+        var countAliases = new Dictionary<string, string> { [" customfield_11854 "] = " Roadmap " };
 
         // Act
         var config = new ReportConfig(
@@ -61,10 +63,14 @@ public sealed class ReportConfigTests
             new JqlQuery("project = APP"),
             outputFields,
             countFields,
-            new PdfReportName("Sprint report"));
+            new PdfReportName("Sprint report"),
+            outputAliases,
+            countAliases);
 
         outputFields.Add(new IssueFieldName("assignee"));
         countFields.Add(new IssueFieldName("priority"));
+        outputAliases["customfield_14454"] = "Domain";
+        countAliases["customfield_14454"] = "Domain";
 
         // Assert
         config.Name.Value.Should().Be("Backlog");
@@ -72,5 +78,9 @@ public sealed class ReportConfigTests
         config.PdfReportName.Value.Should().Be("Sprint report");
         config.OutputFields.Select(static field => field.Value).Should().ContainSingle().Which.Should().Be("summary");
         config.CountFields.Select(static field => field.Value).Should().ContainSingle().Which.Should().Be("status");
+        config.OutputFieldsAliases.Should().ContainKey("customfield_11868").WhoseValue.Should().Be("Sport");
+        config.OutputFieldsAliases.Should().NotContainKey("customfield_14454");
+        config.CountFieldsAliases.Should().ContainKey("customfield_11854").WhoseValue.Should().Be("Roadmap");
+        config.CountFieldsAliases.Should().NotContainKey("customfield_14454");
     }
 }

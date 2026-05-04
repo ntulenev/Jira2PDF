@@ -12,8 +12,11 @@ internal interface IJiraLogicService
     /// Resolves output columns from config.
     /// </summary>
     /// <param name="configuredFields">Configured field names.</param>
+    /// <param name="configuredFieldAliases">Optional display aliases by configured field name.</param>
     /// <returns>Resolved output columns.</returns>
-    IReadOnlyList<OutputColumn> ResolveOutputColumns(IReadOnlyList<IssueFieldName>? configuredFields);
+    IReadOnlyList<OutputColumn> ResolveOutputColumns(
+        IReadOnlyList<IssueFieldName>? configuredFields,
+        IReadOnlyDictionary<string, string>? configuredFieldAliases = null);
 
     /// <summary>
     /// Resolves Jira API fields to request from report field configuration.
@@ -41,11 +44,13 @@ internal interface IJiraLogicService
     /// <param name="jql">JQL query.</param>
     /// <param name="issues">Loaded issues.</param>
     /// <param name="configuredCountFields">Configured grouped count fields.</param>
+    /// <param name="configuredCountFieldAliases">Optional display aliases by configured count field name.</param>
     /// <returns>Prepared report model.</returns>
     JiraJqlReport BuildReport(
         PdfReportName reportTitle,
         ReportName configName,
         JqlQuery jql,
         IReadOnlyList<JiraIssue> issues,
-        IReadOnlyList<IssueFieldName>? configuredCountFields);
+        IReadOnlyList<IssueFieldName>? configuredCountFields,
+        IReadOnlyDictionary<string, string>? configuredCountFieldAliases = null);
 }

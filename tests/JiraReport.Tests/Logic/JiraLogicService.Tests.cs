@@ -42,6 +42,25 @@ public sealed class JiraLogicServiceTests
         columns[^1].Selector(issue).Value.Should().Be("Implement report");
     }
 
+    [Fact(DisplayName = "ResolveOutputColumns applies configured aliases")]
+    [Trait("Category", "Unit")]
+    public void ResolveOutputColumnsWhenAliasesAreConfiguredUsesAliasHeaders()
+    {
+        // Arrange
+        var service = new JiraLogicService();
+
+        // Act
+        var columns = service.ResolveOutputColumns(
+            [new IssueFieldName("customfield_11868"), new IssueFieldName("summary")],
+            new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["customfield_11868"] = "Sport"
+            });
+
+        // Assert
+        columns.Select(static column => column.Header.Value).Should().ContainInOrder("Sport", "Summary");
+    }
+
     [Fact(DisplayName = "ResolveRequestedIssueFields merges output and count fields without duplicates")]
     [Trait("Category", "Unit")]
     public void ResolveRequestedIssueFieldsWhenConfiguredMergesOutputAndCountFieldsWithoutDuplicates()
@@ -138,5 +157,38 @@ public sealed class JiraLogicServiceTests
         report.CountTables[1].Rows.Select(static row => row.Name).Should().ContainInOrder("API", "Backend", "Unknown");
         report.GeneratedAt.Should().BeOnOrAfter(before);
         report.GeneratedAt.Should().BeOnOrBefore(after);
+    }
+
+    [Fact(DisplayName = "BuildReport applies configured count field aliases")]
+    [Trait("Category", "Unit")]
+    public void BuildReportWhenCountAliasesAreConfiguredUsesAliasTitles()
+    {
+        // Arrange
+        var service = new JiraLogicService();
+        var issues = new[]
+        {
+            new JiraIssue(
+                new IssueKey("APP-1"),
+                new Dictionary<IssueKey, FieldValue>
+                {
+                    [new IssueKey("customfield_11868")] = new FieldValue("Football")
+                })
+        };
+
+        // Act
+        var report = service.BuildReport(
+            new PdfReportName("Sprint report"),
+            new ReportName("Backlog"),
+            new JqlQuery("project = APP"),
+            issues,
+            [new IssueFieldName("customfield_11868")],
+            new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["customfield_11868"] = "Sport"
+            });
+
+        // Assert
+        report.CountTables.Should().ContainSingle();
+        report.CountTables[0].Title.Should().Be("By Sport");
     }
 }

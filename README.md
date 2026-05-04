@@ -94,6 +94,20 @@ Main section: `Jira`
         "OutputFields": [ "key", "issuetype", "status", "summary" ],
         "CountFields": [ "status" ],
         "PdfReportName": "Selected_Tickets_Snapshot"
+      },
+      {
+        "Name": "Roadmap Snapshot",
+        "Jql": "project = APP AND \"Target Release\" in (\"2026 H1\", \"2026 H2\") ORDER BY Rank ASC",
+        "OutputFields": [ "key", "summary", "customfield_12345", "customfield_23456", "status" ],
+        "CountFields": [ "customfield_12345", "status" ],
+        "OutputFieldsAliases": {
+          "customfield_12345": "Target Release",
+          "customfield_23456": "Business Area"
+        },
+        "CountFieldsAliases": {
+          "customfield_12345": "Target Release"
+        },
+        "PdfReportName": "APP_Roadmap_Snapshot"
       }
     ]
   },
@@ -132,8 +146,10 @@ Each report item supports:
 - `Name`: display name in interactive selector.
 - `Jql`: query to run.
 - `OutputFields`: table columns for console/PDF (order is preserved).
+- `OutputFieldsAliases`: optional display labels for output columns by configured field key/name.
 - `CountFields`: summary table groups to display (order is preserved; defaults to `status`, `issuetype`, `assignee`).
   For Jira multi-value fields (for example `components`), each item is counted separately in summary tables (based on Jira JSON arrays, not by splitting text on commas).
+- `CountFieldsAliases`: optional display labels for summary table titles by configured field key/name.
 - `PdfReportName`: required report title/file base name used for generated PDF name.
 
 ### PDF Settings

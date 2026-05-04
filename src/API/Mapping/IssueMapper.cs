@@ -56,7 +56,7 @@ internal sealed class IssueMapper : IIssueMapper
                             foreach (var alias in aliases)
                             {
                                 var aliasKey = new IssueKey(alias);
-                                fields[aliasKey] = new FieldValue(flattenedValue);
+                                SetFieldValue(fields, aliasKey, new FieldValue(flattenedValue));
                                 if (fieldItems is not null)
                                 {
                                     multiValueFields[aliasKey] = fieldItems;
@@ -69,6 +69,24 @@ internal sealed class IssueMapper : IIssueMapper
                 return new JiraIssue(new IssueKey(issue.Key!.Trim()), fields, multiValueFields);
             })];
     }
+
+    private static void SetFieldValue(
+        Dictionary<IssueKey, FieldValue> fields,
+        IssueKey key,
+        FieldValue value)
+    {
+        if (!fields.TryGetValue(key, out var current) ||
+            IsMissingValue(current) ||
+            !IsMissingValue(value))
+        {
+            fields[key] = value;
+        }
+    }
+
+    private static bool IsMissingValue(FieldValue value) =>
+        value == FieldValue.Missing ||
+        string.IsNullOrWhiteSpace(value.Value) ||
+        value.Value == "-";
 
     private static List<string> NormalizeFieldValues(string fieldKey, JsonElement rawValue)
     {

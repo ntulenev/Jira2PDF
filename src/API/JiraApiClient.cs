@@ -175,9 +175,13 @@ internal sealed class JiraApiClient : IJiraApiClient
                 continue;
             }
 
-            if (TryResolveApiField(configuredField, fieldAliases, out var apiField))
+            if (TryResolveApiFields(configuredField, fieldAliases, out var apiFields))
             {
-                resolvedFields.Add(new ResolvedRequestedField(configuredField, apiField));
+                foreach (var apiField in apiFields)
+                {
+                    resolvedFields.Add(new ResolvedRequestedField(configuredField, apiField));
+                }
+
                 continue;
             }
 
@@ -195,7 +199,7 @@ internal sealed class JiraApiClient : IJiraApiClient
         return resolvedFields;
     }
 
-    private async Task<IReadOnlyDictionary<string, string>> GetFieldAliasesAsync(CancellationToken cancellationToken)
+    private async Task<IReadOnlyDictionary<string, IReadOnlyList<string>>> GetFieldAliasesAsync(CancellationToken cancellationToken)
     {
         if (_fieldAliasesByName is not null)
         {
@@ -210,35 +214,35 @@ internal sealed class JiraApiClient : IJiraApiClient
         return _fieldAliasesByName;
     }
 
-    private static bool TryResolveApiField(
+    private static bool TryResolveApiFields(
         string configuredField,
-        IReadOnlyDictionary<string, string> aliases,
-        out string apiField)
+        IReadOnlyDictionary<string, IReadOnlyList<string>> aliases,
+        out IReadOnlyList<string> apiFields)
     {
-        if (aliases.TryGetValue(configuredField, out var configuredApiField) &&
-            !string.IsNullOrWhiteSpace(configuredApiField))
+        if (aliases.TryGetValue(configuredField, out var configuredApiFields) &&
+            configuredApiFields.Count > 0)
         {
-            apiField = configuredApiField;
+            apiFields = configuredApiFields;
             return true;
         }
 
         var simplified = SimplifyFieldAlias(configuredField);
         if (!string.Equals(simplified, configuredField, StringComparison.OrdinalIgnoreCase) &&
-            aliases.TryGetValue(simplified, out var simplifiedApiField) &&
-            !string.IsNullOrWhiteSpace(simplifiedApiField))
+            aliases.TryGetValue(simplified, out var simplifiedApiFields) &&
+            simplifiedApiFields.Count > 0)
         {
-            apiField = simplifiedApiField;
+            apiFields = simplifiedApiFields;
             return true;
         }
 
-        apiField = string.Empty;
+        apiFields = [];
         return false;
     }
 
-    private static Dictionary<string, string> BuildFieldAliasLookup(
+    private static Dictionary<string, IReadOnlyList<string>> BuildFieldAliasLookup(
         IReadOnlyList<JiraFieldDefinitionResponse> fields)
     {
-        var aliases = new Dictionary<string, AliasResolution>(StringComparer.OrdinalIgnoreCase);
+        var aliases = new Dictionary<string, List<AliasResolution>>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var field in fields)
         {
@@ -265,12 +269,12 @@ internal sealed class JiraApiClient : IJiraApiClient
 
         return aliases.ToDictionary(
             static pair => pair.Key,
-            static pair => pair.Value.ApiField,
+            static pair => (IReadOnlyList<string>)[.. pair.Value.Select(static value => value.ApiField)],
             StringComparer.OrdinalIgnoreCase);
     }
 
     private static void AddFieldAlias(
-        Dictionary<string, AliasResolution> aliases,
+        Dictionary<string, List<AliasResolution>> aliases,
         string? alias,
         string apiField,
         int priority,
@@ -292,7 +296,7 @@ internal sealed class JiraApiClient : IJiraApiClient
     }
 
     private static void UpsertAlias(
-        Dictionary<string, AliasResolution> aliases,
+        Dictionary<string, List<AliasResolution>> aliases,
         string alias,
         string apiField,
         int priority,
@@ -301,19 +305,37 @@ internal sealed class JiraApiClient : IJiraApiClient
         var candidate = new AliasResolution(apiField, priority, isSystemField);
         if (!aliases.TryGetValue(alias, out var current))
         {
-            aliases[alias] = candidate;
+            aliases[alias] = [candidate];
             return;
         }
 
-        if (priority > current.Priority)
+        var currentPriority = current[0].Priority;
+        if (priority > currentPriority)
         {
-            aliases[alias] = candidate;
+            aliases[alias] = [candidate];
             return;
         }
 
-        if (priority == current.Priority && isSystemField && !current.IsSystemField)
+        if (priority < currentPriority)
         {
-            aliases[alias] = candidate;
+            return;
+        }
+
+        var currentHasSystemField = current.Any(static value => value.IsSystemField);
+        if (isSystemField && !currentHasSystemField)
+        {
+            aliases[alias] = [candidate];
+            return;
+        }
+
+        if (!isSystemField && currentHasSystemField)
+        {
+            return;
+        }
+
+        if (current.All(value => !string.Equals(value.ApiField, apiField, StringComparison.OrdinalIgnoreCase)))
+        {
+            current.Add(candidate);
         }
     }
 
@@ -395,7 +417,7 @@ internal sealed class JiraApiClient : IJiraApiClient
     private static readonly IReadOnlyList<string> _defaultIssueFields =
         ["summary", "status", "issuetype", "assignee", "created", "updated"];
     private const string FIELD_CATALOG_URL = "rest/api/3/field";
-    private IReadOnlyDictionary<string, string>? _fieldAliasesByName;
+    private IReadOnlyDictionary<string, IReadOnlyList<string>>? _fieldAliasesByName;
     private sealed record ResolvedRequestedField(string ConfiguredField, string ApiField);
     private sealed record AliasResolution(string ApiField, int Priority, bool IsSystemField);
     private readonly IIssueMapper _issueMapper;

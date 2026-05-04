@@ -104,6 +104,50 @@ public sealed class IssueMapperTests
         issue.GetFieldValues(new IssueKey("Labels")).Select(static value => value.Value).Should().ContainInOrder("Backend", "API");
     }
 
+    [Fact(DisplayName = "MapIssues keeps populated alias value when duplicate field candidate is empty")]
+    [Trait("Category", "Unit")]
+    public void MapIssuesWhenDuplicateAliasCandidateIsEmptyKeepsPopulatedValue()
+    {
+        // Arrange
+        var mapper = new IssueMapper();
+        using var document = JsonDocument.Parse(
+            """
+            {
+              "customfield_11868": ["Football"],
+              "customfield_20000": null
+            }
+            """);
+        var page = new JiraSearchResponse
+        {
+            Issues =
+            [
+                new JiraIssueResponse
+                {
+                    Key = "APP-1",
+                    Fields = new JiraIssueFieldsResponse
+                    {
+                        Values = document.RootElement.EnumerateObject().ToDictionary(
+                            static property => property.Name,
+                            static property => property.Value.Clone(),
+                            StringComparer.OrdinalIgnoreCase)
+                    }
+                }
+            ]
+        };
+        var aliases = new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["customfield_11868"] = ["Sport"],
+            ["customfield_20000"] = ["Sport"]
+        };
+
+        // Act
+        var issues = mapper.MapIssues(page, aliases);
+
+        // Assert
+        issues.Should().ContainSingle();
+        issues[0].GetFieldValue(new IssueKey("Sport")).Value.Should().Be("Football");
+    }
+
     private static Dictionary<string, JsonElement> CreateFieldValues()
     {
         using var document = JsonDocument.Parse(
