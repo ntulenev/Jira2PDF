@@ -40,6 +40,11 @@ internal sealed class ReportConfigOptions
     public IReadOnlyDictionary<string, string>? CountFieldsAliases { get; init; }
 
     /// <summary>
+    /// Gets optional computed fields by configured field key or name.
+    /// </summary>
+    public IReadOnlyDictionary<string, ComputedFieldOptions>? ComputedFields { get; init; }
+
+    /// <summary>
     /// Gets required PDF report title/file base name.
     /// </summary>
     [Required]

@@ -1,4 +1,5 @@
 using System.Net;
+using System.Text.Json;
 
 using JiraReport.Abstractions;
 using JiraReport.Models;
@@ -36,6 +37,7 @@ internal sealed class JiraApiClient : IJiraApiClient
     public async Task<IReadOnlyList<JiraIssue>> SearchIssuesAsync(
         JqlQuery jql,
         IReadOnlyList<IssueFieldName> issueFields,
+        IReadOnlyDictionary<string, ComputedFieldConfig>? computedFields,
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(issueFields);
@@ -43,7 +45,9 @@ internal sealed class JiraApiClient : IJiraApiClient
         var pageSize = Math.Clamp(_settings.MaxResultsPerPage, 1, 100);
         var jqlText = jql.Value;
         var resolvedFields = await ResolveRequestedFieldsAsync(issueFields, cancellationToken).ConfigureAwait(false);
-        var requestedFieldsCsv = BuildRequestedFieldsCsv(resolvedFields);
+        var fieldAliases = await GetFieldAliasesAsync(cancellationToken).ConfigureAwait(false);
+        var resolvedComputedFields = ResolveComputedFields(resolvedFields, computedFields, fieldAliases);
+        var requestedFieldsCsv = BuildRequestedFieldsCsv(resolvedFields, resolvedComputedFields);
         var aliasesByApiField = BuildAliasesByApiField(resolvedFields);
 
         try
@@ -52,6 +56,7 @@ internal sealed class JiraApiClient : IJiraApiClient
                     jqlText,
                     requestedFieldsCsv,
                     aliasesByApiField,
+                    resolvedComputedFields,
                     pageSize,
                     cancellationToken)
                 .ConfigureAwait(false);
@@ -62,6 +67,7 @@ internal sealed class JiraApiClient : IJiraApiClient
                     jqlText,
                     requestedFieldsCsv,
                     aliasesByApiField,
+                    resolvedComputedFields,
                     pageSize,
                     cancellationToken)
                 .ConfigureAwait(false);
@@ -72,6 +78,7 @@ internal sealed class JiraApiClient : IJiraApiClient
         string jql,
         string requestedFieldsCsv,
         IReadOnlyDictionary<string, IReadOnlyList<string>> aliasesByApiField,
+        IReadOnlyDictionary<string, ComputedFieldConfig> computedFieldsByApiField,
         int pageSize,
         CancellationToken cancellationToken)
     {
@@ -89,6 +96,8 @@ internal sealed class JiraApiClient : IJiraApiClient
             }
 
             var page = await GetSearchPageAsync(searchUrl, cancellationToken).ConfigureAwait(false);
+            await ApplyComputedFieldsAsync(page, computedFieldsByApiField, pageSize, cancellationToken)
+                .ConfigureAwait(false);
             issues.AddRange(_issueMapper.MapIssues(page, aliasesByApiField));
 
             nextPageToken = page.NextPageToken;
@@ -105,6 +114,7 @@ internal sealed class JiraApiClient : IJiraApiClient
         string jql,
         string requestedFieldsCsv,
         IReadOnlyDictionary<string, IReadOnlyList<string>> aliasesByApiField,
+        IReadOnlyDictionary<string, ComputedFieldConfig> computedFieldsByApiField,
         int pageSize,
         CancellationToken cancellationToken)
     {
@@ -118,6 +128,8 @@ internal sealed class JiraApiClient : IJiraApiClient
                 $"&startAt={startAt}&maxResults={pageSize}";
 
             var page = await GetSearchPageAsync(searchUrl, cancellationToken).ConfigureAwait(false);
+            await ApplyComputedFieldsAsync(page, computedFieldsByApiField, pageSize, cancellationToken)
+                .ConfigureAwait(false);
             issues.AddRange(_issueMapper.MapIssues(page, aliasesByApiField));
 
             if (page.Issues.Count == 0)
@@ -145,7 +157,313 @@ internal sealed class JiraApiClient : IJiraApiClient
         return page ?? throw new InvalidOperationException("Jira search response is empty.");
     }
 
+    private async Task ApplyComputedFieldsAsync(
+        JiraSearchResponse page,
+        IReadOnlyDictionary<string, ComputedFieldConfig> computedFieldsByApiField,
+        int pageSize,
+        CancellationToken cancellationToken)
+    {
+        if (page.Issues.Count == 0 || computedFieldsByApiField.Count == 0)
+        {
+            return;
+        }
+
+        foreach (var (apiField, computedField) in computedFieldsByApiField)
+        {
+            if (IsLinkedIssueProgress(computedField))
+            {
+                await ApplyLinkedIssueProgressAsync(page, apiField, computedField, pageSize, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+        }
+    }
+
+    private async Task ApplyLinkedIssueProgressAsync(
+        JiraSearchResponse page,
+        string apiField,
+        ComputedFieldConfig computedField,
+        int pageSize,
+        CancellationToken cancellationToken)
+    {
+        var linkedIssuesByIssueKey = CollectLinkedIssuesByIssueKey(page, computedField.LinkType);
+        var linkedIssueKeys = linkedIssuesByIssueKey.Values
+            .SelectMany(static issues => issues)
+            .Select(static issue => issue.Key)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        var childrenByParentKey = string.Equals(computedField.Mode, "Default", StringComparison.OrdinalIgnoreCase)
+            ? await LoadChildIssueStatusesAsync(linkedIssueKeys, computedField.ChildJqlTemplate, pageSize, cancellationToken)
+                .ConfigureAwait(false)
+            : new Dictionary<string, List<LinkedIssueStatus>>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var issue in page.Issues)
+        {
+            if (string.IsNullOrWhiteSpace(issue.Key) ||
+                issue.Fields is null)
+            {
+                continue;
+            }
+
+            if (!linkedIssuesByIssueKey.TryGetValue(issue.Key.Trim(), out var linkedIssues))
+            {
+                linkedIssues = [];
+            }
+
+            var progress = CalculateLinkedIssueProgress(linkedIssues, childrenByParentKey, computedField);
+            issue.Fields.Values[apiField] = JsonSerializer.SerializeToElement(FormatComputedValue(progress, computedField.Format));
+        }
+    }
+
+    private async Task<Dictionary<string, List<LinkedIssueStatus>>> LoadChildIssueStatusesAsync(
+        List<string> parentKeys,
+        string childJqlTemplate,
+        int pageSize,
+        CancellationToken cancellationToken)
+    {
+        var childrenByParentKey = new Dictionary<string, List<LinkedIssueStatus>>(StringComparer.OrdinalIgnoreCase);
+        if (parentKeys.Count == 0 || !childJqlTemplate.Contains(KEYS_PLACEHOLDER, StringComparison.Ordinal))
+        {
+            return childrenByParentKey;
+        }
+
+        var jql = childJqlTemplate.Replace(KEYS_PLACEHOLDER, string.Join(", ", parentKeys), StringComparison.Ordinal);
+        string? nextPageToken = null;
+
+        while (true)
+        {
+            var searchUrl =
+                $"rest/api/3/search/jql?jql={Uri.EscapeDataString(jql)}&fields={Uri.EscapeDataString("status,parent")}" +
+                $"&maxResults={pageSize}";
+            if (!string.IsNullOrWhiteSpace(nextPageToken))
+            {
+                searchUrl += $"&nextPageToken={Uri.EscapeDataString(nextPageToken)}";
+            }
+
+            var page = await GetSearchPageAsync(searchUrl, cancellationToken).ConfigureAwait(false);
+            foreach (var issue in page.Issues)
+            {
+                if (issue.Fields?.Values is not { Count: > 0 } fields ||
+                    !TryExtractParentKey(fields, out var parentKey) ||
+                    !TryExtractStatus(fields, out var status))
+                {
+                    continue;
+                }
+
+                if (!childrenByParentKey.TryGetValue(parentKey, out var children))
+                {
+                    children = [];
+                    childrenByParentKey[parentKey] = children;
+                }
+
+                children.Add(status);
+            }
+
+            nextPageToken = page.NextPageToken;
+            if (page.Issues.Count == 0 || page.IsLast || string.IsNullOrWhiteSpace(nextPageToken))
+            {
+                break;
+            }
+        }
+
+        return childrenByParentKey;
+    }
+
     private static string NormalizeFieldKey(string fieldKey) => fieldKey.Trim();
+
+    private static Dictionary<string, List<LinkedIssueStatus>> CollectLinkedIssuesByIssueKey(
+        JiraSearchResponse page,
+        string linkType)
+    {
+        var linkedIssuesByIssueKey = new Dictionary<string, List<LinkedIssueStatus>>(StringComparer.OrdinalIgnoreCase);
+        foreach (var issue in page.Issues)
+        {
+            if (string.IsNullOrWhiteSpace(issue.Key) ||
+                issue.Fields?.Values is not { Count: > 0 } fields ||
+                !fields.TryGetValue(ISSUE_LINKS_API_FIELD, out var issueLinks) ||
+                issueLinks.ValueKind != JsonValueKind.Array)
+            {
+                continue;
+            }
+
+            foreach (var link in issueLinks.EnumerateArray())
+            {
+                if (!IsExpectedLinkType(link, linkType) ||
+                    !TryExtractLinkedIssueStatus(link, out var linkedIssue))
+                {
+                    continue;
+                }
+
+                var issueKey = issue.Key.Trim();
+                if (!linkedIssuesByIssueKey.TryGetValue(issueKey, out var linkedIssues))
+                {
+                    linkedIssues = [];
+                    linkedIssuesByIssueKey[issueKey] = linkedIssues;
+                }
+
+                linkedIssues.Add(linkedIssue);
+            }
+        }
+
+        return linkedIssuesByIssueKey;
+    }
+
+    private static ComputedProgress CalculateLinkedIssueProgress(
+        IReadOnlyList<LinkedIssueStatus> linkedIssues,
+        IReadOnlyDictionary<string, List<LinkedIssueStatus>> childrenByParentKey,
+        ComputedFieldConfig computedField)
+    {
+        var total = 0;
+        var done = 0;
+        var doneCategories = computedField.DoneStatusCategories.Count > 0
+            ? computedField.DoneStatusCategories
+            : _defaultDoneStatusCategories;
+
+        foreach (var linkedIssue in linkedIssues)
+        {
+            if (!string.Equals(computedField.Mode, "Default", StringComparison.OrdinalIgnoreCase))
+            {
+                total++;
+                if (IsDone(linkedIssue, doneCategories))
+                {
+                    done++;
+                }
+
+                continue;
+            }
+
+            if (IsDone(linkedIssue, doneCategories))
+            {
+                var doneIssueCount = childrenByParentKey.TryGetValue(linkedIssue.Key, out var doneChildren) && doneChildren.Count > 0
+                    ? doneChildren.Count
+                    : 1;
+                total += doneIssueCount;
+                done += doneIssueCount;
+                continue;
+            }
+
+            if (childrenByParentKey.TryGetValue(linkedIssue.Key, out var children) && children.Count > 0)
+            {
+                total += children.Count;
+                done += children.Count(child => IsDone(child, doneCategories));
+                continue;
+            }
+
+            total++;
+        }
+
+        return new ComputedProgress(done, total);
+    }
+
+    private static bool IsDone(LinkedIssueStatus issue, IReadOnlyList<string> doneCategories)
+        => doneCategories.Contains(issue.StatusCategoryKey, StringComparer.OrdinalIgnoreCase);
+
+    private static string FormatComputedValue(ComputedProgress progress, string format)
+    {
+        var percentDone = progress.Total == 0
+            ? 0
+            : progress.Done * 100d / progress.Total;
+        var roundedPercentDone = Math.Round(percentDone, MidpointRounding.AwayFromZero);
+        return format
+            .Replace("{PercentDone:0}", roundedPercentDone.ToString("0", System.Globalization.CultureInfo.InvariantCulture), StringComparison.Ordinal)
+            .Replace("{Done}", progress.Done.ToString(System.Globalization.CultureInfo.InvariantCulture), StringComparison.Ordinal)
+            .Replace("{Total}", progress.Total.ToString(System.Globalization.CultureInfo.InvariantCulture), StringComparison.Ordinal);
+    }
+
+    private static bool IsExpectedLinkType(JsonElement link, string linkType)
+        => link.TryGetProperty("type", out var type) &&
+            type.TryGetProperty("name", out var name) &&
+            string.Equals(name.GetString(), linkType, StringComparison.OrdinalIgnoreCase);
+
+    private static bool TryExtractLinkedIssueStatus(JsonElement link, out LinkedIssueStatus linkedIssue)
+    {
+        linkedIssue = default;
+        if (!TryGetLinkedIssue(link, out var issue) ||
+            !issue.TryGetProperty("key", out var keyProperty) ||
+            !issue.TryGetProperty("fields", out var fields) ||
+            !TryExtractStatusFromFields(fields, out var status))
+        {
+            return false;
+        }
+
+        var key = keyProperty.GetString();
+        if (string.IsNullOrWhiteSpace(key))
+        {
+            return false;
+        }
+
+        linkedIssue = new LinkedIssueStatus(key.Trim(), status.StatusName, status.StatusCategoryKey);
+        return true;
+    }
+
+    private static bool TryGetLinkedIssue(JsonElement link, out JsonElement issue)
+    {
+        if (link.TryGetProperty("inwardIssue", out issue))
+        {
+            return true;
+        }
+
+        return link.TryGetProperty("outwardIssue", out issue);
+    }
+
+    private static bool TryExtractParentKey(
+        Dictionary<string, JsonElement> fields,
+        out string parentKey)
+    {
+        parentKey = string.Empty;
+        if (!fields.TryGetValue("parent", out var parent) ||
+            parent.ValueKind != JsonValueKind.Object ||
+            !parent.TryGetProperty("key", out var key))
+        {
+            return false;
+        }
+
+        parentKey = key.GetString() ?? string.Empty;
+        return !string.IsNullOrWhiteSpace(parentKey);
+    }
+
+    private static bool TryExtractStatus(
+        Dictionary<string, JsonElement> fields,
+        out LinkedIssueStatus status)
+    {
+        status = default;
+        if (!fields.TryGetValue("status", out var statusElement))
+        {
+            return false;
+        }
+
+        return TryExtractStatus(statusElement, out status);
+    }
+
+    private static bool TryExtractStatusFromFields(JsonElement fields, out LinkedIssueStatus status)
+    {
+        status = default;
+        if (!fields.TryGetProperty("status", out var statusElement))
+        {
+            return false;
+        }
+
+        return TryExtractStatus(statusElement, out status);
+    }
+
+    private static bool TryExtractStatus(JsonElement statusElement, out LinkedIssueStatus status)
+    {
+        status = default;
+        var statusName = statusElement.TryGetProperty("name", out var name)
+            ? name.GetString() ?? string.Empty
+            : string.Empty;
+        var statusCategoryKey = statusElement.TryGetProperty("statusCategory", out var statusCategory) &&
+            statusCategory.TryGetProperty("key", out var key)
+                ? key.GetString() ?? string.Empty
+                : string.Empty;
+
+        if (string.IsNullOrWhiteSpace(statusName) && string.IsNullOrWhiteSpace(statusCategoryKey))
+        {
+            return false;
+        }
+
+        status = new LinkedIssueStatus(string.Empty, statusName, statusCategoryKey);
+        return true;
+    }
 
     private async Task<IReadOnlyList<ResolvedRequestedField>> ResolveRequestedFieldsAsync(
         IReadOnlyList<IssueFieldName> issueFields,
@@ -388,7 +706,52 @@ internal sealed class JiraApiClient : IJiraApiClient
             StringComparer.OrdinalIgnoreCase);
     }
 
-    private static string BuildRequestedFieldsCsv(IReadOnlyList<ResolvedRequestedField> resolvedFields)
+    private static Dictionary<string, ComputedFieldConfig> ResolveComputedFields(
+        IReadOnlyList<ResolvedRequestedField> resolvedFields,
+        IReadOnlyDictionary<string, ComputedFieldConfig>? computedFields,
+        IReadOnlyDictionary<string, IReadOnlyList<string>> fieldAliases)
+    {
+        var resolvedComputedFields = new Dictionary<string, ComputedFieldConfig>(StringComparer.OrdinalIgnoreCase);
+        if (computedFields is null || computedFields.Count == 0)
+        {
+            return resolvedComputedFields;
+        }
+
+        var requestedApiFields = resolvedFields
+            .Select(static field => field.ApiField)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var (configuredField, computedField) in computedFields)
+        {
+            if (!IsLinkedIssueProgress(computedField) ||
+                !string.Equals(computedField.Metric, "IssueCount", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            var normalizedField = NormalizeFieldKey(configuredField);
+            var apiFields = TryResolveApiFields(normalizedField, fieldAliases, out var resolvedApiFields)
+                ? resolvedApiFields
+                : [normalizedField];
+
+            foreach (var apiField in apiFields)
+            {
+                if (requestedApiFields.Contains(apiField))
+                {
+                    resolvedComputedFields[apiField] = computedField;
+                }
+            }
+        }
+
+        return resolvedComputedFields;
+    }
+
+    private static bool IsLinkedIssueProgress(ComputedFieldConfig computedField)
+        => string.Equals(computedField.Type, "LinkedIssueProgress", StringComparison.OrdinalIgnoreCase);
+
+    private static string BuildRequestedFieldsCsv(
+        IReadOnlyList<ResolvedRequestedField> resolvedFields,
+        Dictionary<string, ComputedFieldConfig> computedFieldsByApiField)
     {
         var requestedFields = new List<string>();
         var seenFields = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -406,6 +769,11 @@ internal sealed class JiraApiClient : IJiraApiClient
             }
         }
 
+        if (computedFieldsByApiField.Count > 0 && seenFields.Add(ISSUE_LINKS_API_FIELD))
+        {
+            requestedFields.Add(ISSUE_LINKS_API_FIELD);
+        }
+
         if (requestedFields.Count == 0)
         {
             requestedFields.AddRange(_defaultIssueFields);
@@ -416,10 +784,15 @@ internal sealed class JiraApiClient : IJiraApiClient
 
     private static readonly IReadOnlyList<string> _defaultIssueFields =
         ["summary", "status", "issuetype", "assignee", "created", "updated"];
+    private static readonly IReadOnlyList<string> _defaultDoneStatusCategories = ["done"];
+    private const string ISSUE_LINKS_API_FIELD = "issuelinks";
+    private const string KEYS_PLACEHOLDER = "{keys}";
     private const string FIELD_CATALOG_URL = "rest/api/3/field";
     private IReadOnlyDictionary<string, IReadOnlyList<string>>? _fieldAliasesByName;
     private sealed record ResolvedRequestedField(string ConfiguredField, string ApiField);
     private sealed record AliasResolution(string ApiField, int Priority, bool IsSystemField);
+    private readonly record struct LinkedIssueStatus(string Key, string StatusName, string StatusCategoryKey);
+    private readonly record struct ComputedProgress(int Done, int Total);
     private readonly IIssueMapper _issueMapper;
     private readonly IJiraTransport _transport;
     private readonly AppSettings _settings;

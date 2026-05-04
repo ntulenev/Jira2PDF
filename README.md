@@ -107,6 +107,17 @@ Main section: `Jira`
         "CountFieldsAliases": {
           "customfield_12345": "Target Release"
         },
+        "ComputedFields": {
+          "customfield_34567": {
+            "Type": "LinkedIssueProgress",
+            "LinkType": "Polaris work item link",
+            "Mode": "Default",
+            "Metric": "IssueCount",
+            "DoneStatusCategories": [ "done" ],
+            "ChildJqlTemplate": "parent in ({keys})",
+            "Format": "{PercentDone:0}% Done"
+          }
+        },
         "PdfReportName": "APP_Roadmap_Snapshot"
       }
     ]
@@ -150,7 +161,16 @@ Each report item supports:
 - `CountFields`: summary table groups to display (order is preserved; defaults to `status`, `issuetype`, `assignee`).
   For Jira multi-value fields (for example `components`), each item is counted separately in summary tables (based on Jira JSON arrays, not by splitting text on commas).
 - `CountFieldsAliases`: optional display labels for summary table titles by configured field key/name.
+- `ComputedFields`: optional calculated field values by configured field key/name. `LinkedIssueProgress` can calculate Jira Product Discovery-style delivery progress from linked Jira work items.
 - `PdfReportName`: required report title/file base name used for generated PDF name.
+
+`LinkedIssueProgress` settings:
+- `LinkType`: Jira issue link type used to find delivery work items.
+- `Mode`: `Default` follows linked work item children when present; `Simple` uses linked work item statuses directly.
+- `Metric`: currently `IssueCount`.
+- `DoneStatusCategories`: Jira status category keys counted as done.
+- `ChildJqlTemplate`: JQL used to load direct children of linked work items. `{keys}` is replaced with linked work item keys.
+- `Format`: output text. Supported placeholders are `{PercentDone:0}`, `{Done}`, and `{Total}`.
 
 ### PDF Settings
 

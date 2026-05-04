@@ -71,7 +71,7 @@ internal sealed class JiraApplication : IJiraApplication
                 {
                     setLoadingStatus("Loading issues from Jira...");
                     var issues = await _jiraApiClient
-                        .SearchIssuesAsync(jql, requestedIssueFields, cancellationToken)
+                        .SearchIssuesAsync(jql, requestedIssueFields, selectedReportConfig.ComputedFields, cancellationToken)
                         .ConfigureAwait(false);
 
                     setLoadingStatus("Building report data...");

@@ -56,6 +56,17 @@ public sealed class ReportConfigTests
         var countFields = new List<IssueFieldName> { new("status") };
         var outputAliases = new Dictionary<string, string> { [" customfield_11868 "] = " Sport " };
         var countAliases = new Dictionary<string, string> { [" customfield_11854 "] = " Roadmap " };
+        var computedFields = new Dictionary<string, ComputedFieldConfig>
+        {
+            [" customfield_11728 "] = new ComputedFieldConfig(
+                "LinkedIssueProgress",
+                "Polaris work item link",
+                "Default",
+                "IssueCount",
+                ["done"],
+                "parent in ({keys})",
+                "{PercentDone:0}% Done")
+        };
 
         // Act
         var config = new ReportConfig(
@@ -65,12 +76,21 @@ public sealed class ReportConfigTests
             countFields,
             new PdfReportName("Sprint report"),
             outputAliases,
-            countAliases);
+            countAliases,
+            computedFields);
 
         outputFields.Add(new IssueFieldName("assignee"));
         countFields.Add(new IssueFieldName("priority"));
         outputAliases["customfield_14454"] = "Domain";
         countAliases["customfield_14454"] = "Domain";
+        computedFields["customfield_14454"] = new ComputedFieldConfig(
+            "LinkedIssueProgress",
+            "Polaris work item link",
+            "Default",
+            "IssueCount",
+            ["done"],
+            "parent in ({keys})",
+            "{PercentDone:0}% Done");
 
         // Assert
         config.Name.Value.Should().Be("Backlog");
@@ -82,5 +102,7 @@ public sealed class ReportConfigTests
         config.OutputFieldsAliases.Should().NotContainKey("customfield_14454");
         config.CountFieldsAliases.Should().ContainKey("customfield_11854").WhoseValue.Should().Be("Roadmap");
         config.CountFieldsAliases.Should().NotContainKey("customfield_14454");
+        config.ComputedFields.Should().ContainKey("customfield_11728");
+        config.ComputedFields.Should().NotContainKey("customfield_14454");
     }
 }

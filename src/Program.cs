@@ -113,7 +113,8 @@ static IReadOnlyList<ReportConfig> ResolveReports(IReadOnlyList<ReportConfigOpti
             report.CountFields is null ? [] : [.. report.CountFields.Select(static field => new IssueFieldName(field))],
             new PdfReportName(report.PdfReportName.Trim()),
             report.OutputFieldsAliases,
-            report.CountFieldsAliases))
+            report.CountFieldsAliases,
+            ResolveComputedFields(report.ComputedFields)))
         .ToList();
 
     if (reports.Count == 0)
@@ -123,4 +124,39 @@ static IReadOnlyList<ReportConfig> ResolveReports(IReadOnlyList<ReportConfigOpti
     }
 
     return reports;
+}
+
+static IReadOnlyDictionary<string, ComputedFieldConfig> ResolveComputedFields(
+    IReadOnlyDictionary<string, ComputedFieldOptions>? sourceComputedFields)
+{
+    if (sourceComputedFields is null || sourceComputedFields.Count == 0)
+    {
+        return new Dictionary<string, ComputedFieldConfig>(StringComparer.OrdinalIgnoreCase);
+    }
+
+    var computedFields = new Dictionary<string, ComputedFieldConfig>(StringComparer.OrdinalIgnoreCase);
+    foreach (var (field, options) in sourceComputedFields)
+    {
+        if (string.IsNullOrWhiteSpace(field) ||
+            string.IsNullOrWhiteSpace(options.Type) ||
+            string.IsNullOrWhiteSpace(options.LinkType) ||
+            string.IsNullOrWhiteSpace(options.Mode) ||
+            string.IsNullOrWhiteSpace(options.Metric) ||
+            string.IsNullOrWhiteSpace(options.ChildJqlTemplate) ||
+            string.IsNullOrWhiteSpace(options.Format))
+        {
+            continue;
+        }
+
+        computedFields[field.Trim()] = new ComputedFieldConfig(
+            options.Type,
+            options.LinkType,
+            options.Mode,
+            options.Metric,
+            options.DoneStatusCategories ?? [],
+            options.ChildJqlTemplate,
+            options.Format);
+    }
+
+    return computedFields;
 }

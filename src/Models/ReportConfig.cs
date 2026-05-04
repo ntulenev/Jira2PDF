@@ -17,6 +17,7 @@ internal sealed record ReportConfig
     /// <param name="pdfReportName">Required PDF report title/file base name.</param>
     /// <param name="outputFieldsAliases">Optional display aliases for requested output fields.</param>
     /// <param name="countFieldsAliases">Optional display aliases for requested grouped count fields.</param>
+    /// <param name="computedFields">Optional computed fields by configured field key or name.</param>
     public ReportConfig(
         ReportName name,
         JqlQuery jql,
@@ -24,7 +25,8 @@ internal sealed record ReportConfig
         IReadOnlyList<IssueFieldName> countFields,
         PdfReportName pdfReportName,
         IReadOnlyDictionary<string, string>? outputFieldsAliases = null,
-        IReadOnlyDictionary<string, string>? countFieldsAliases = null)
+        IReadOnlyDictionary<string, string>? countFieldsAliases = null,
+        IReadOnlyDictionary<string, ComputedFieldConfig>? computedFields = null)
     {
         ArgumentNullException.ThrowIfNull(outputFields);
         ArgumentNullException.ThrowIfNull(countFields);
@@ -36,6 +38,7 @@ internal sealed record ReportConfig
         PdfReportName = pdfReportName;
         OutputFieldsAliases = NormalizeAliases(outputFieldsAliases);
         CountFieldsAliases = NormalizeAliases(countFieldsAliases);
+        ComputedFields = NormalizeComputedFields(computedFields);
     }
 
     /// <summary>
@@ -69,6 +72,11 @@ internal sealed record ReportConfig
     public IReadOnlyDictionary<string, string> CountFieldsAliases { get; }
 
     /// <summary>
+    /// Gets optional computed fields by configured field key or name.
+    /// </summary>
+    public IReadOnlyDictionary<string, ComputedFieldConfig> ComputedFields { get; }
+
+    /// <summary>
     /// Gets required PDF report title/file base name.
     /// </summary>
     public PdfReportName PdfReportName { get; }
@@ -95,6 +103,30 @@ internal sealed record ReportConfig
         return normalizedAliases.Count > 0 ? normalizedAliases : _emptyAliases;
     }
 
+    private static IReadOnlyDictionary<string, ComputedFieldConfig> NormalizeComputedFields(
+        IReadOnlyDictionary<string, ComputedFieldConfig>? computedFields)
+    {
+        if (computedFields is null || computedFields.Count == 0)
+        {
+            return _emptyComputedFields;
+        }
+
+        var normalizedComputedFields = new Dictionary<string, ComputedFieldConfig>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (field, config) in computedFields)
+        {
+            if (string.IsNullOrWhiteSpace(field) || config is null)
+            {
+                continue;
+            }
+
+            normalizedComputedFields[field.Trim()] = config;
+        }
+
+        return normalizedComputedFields.Count > 0 ? normalizedComputedFields : _emptyComputedFields;
+    }
+
     private static readonly IReadOnlyDictionary<string, string> _emptyAliases =
         new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+    private static readonly IReadOnlyDictionary<string, ComputedFieldConfig> _emptyComputedFields =
+        new Dictionary<string, ComputedFieldConfig>(StringComparer.OrdinalIgnoreCase);
 }

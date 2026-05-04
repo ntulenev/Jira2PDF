@@ -21,6 +21,19 @@ public sealed class ReportConfigOptionsTests
             OutputFieldsAliases = new Dictionary<string, string> { ["customfield_11868"] = "Sport" },
             CountFields = ["status"],
             CountFieldsAliases = new Dictionary<string, string> { ["customfield_11854"] = "Roadmap" },
+            ComputedFields = new Dictionary<string, ComputedFieldOptions>
+            {
+                ["customfield_11728"] = new ComputedFieldOptions
+                {
+                    Type = "LinkedIssueProgress",
+                    LinkType = "Polaris work item link",
+                    Mode = "Default",
+                    Metric = "IssueCount",
+                    DoneStatusCategories = ["done"],
+                    ChildJqlTemplate = "parent in ({keys})",
+                    Format = "{PercentDone:0}% Done"
+                }
+            },
             PdfReportName = "Sprint report"
         };
 
@@ -33,6 +46,8 @@ public sealed class ReportConfigOptionsTests
         options.OutputFieldsAliases.Should().ContainKey("customfield_11868").WhoseValue.Should().Be("Sport");
         options.CountFields.Should().ContainSingle().Which.Should().Be("status");
         options.CountFieldsAliases.Should().ContainKey("customfield_11854").WhoseValue.Should().Be("Roadmap");
+        options.ComputedFields.Should().ContainKey("customfield_11728");
+        options.ComputedFields["customfield_11728"].Type.Should().Be("LinkedIssueProgress");
     }
 
     [Fact(DisplayName = "Validator reports missing name")]

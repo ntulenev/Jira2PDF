@@ -187,7 +187,11 @@ public sealed class JiraApplicationTests
             []);
 
         var jiraApiClient = new Mock<IJiraApiClient>(MockBehavior.Strict);
-        jiraApiClient.Setup(client => client.SearchIssuesAsync(selectedReport.Jql, requestedFields, cts.Token))
+        jiraApiClient.Setup(client => client.SearchIssuesAsync(
+                selectedReport.Jql,
+                requestedFields,
+                selectedReport.ComputedFields,
+                cts.Token))
             .ReturnsAsync(issues);
 
         var jiraLogicService = new Mock<IJiraLogicService>(MockBehavior.Strict);
@@ -277,7 +281,11 @@ public sealed class JiraApplicationTests
             []);
 
         var jiraApiClient = new Mock<IJiraApiClient>(MockBehavior.Strict);
-        jiraApiClient.Setup(client => client.SearchIssuesAsync(selectedReport.Jql, requestedFields, cts.Token))
+        jiraApiClient.Setup(client => client.SearchIssuesAsync(
+                selectedReport.Jql,
+                requestedFields,
+                selectedReport.ComputedFields,
+                cts.Token))
             .ReturnsAsync(issues);
 
         var jiraLogicService = new Mock<IJiraLogicService>(MockBehavior.Strict);
@@ -373,7 +381,11 @@ public sealed class JiraApplicationTests
             []);
 
         var jiraApiClient = new Mock<IJiraApiClient>(MockBehavior.Strict);
-        jiraApiClient.Setup(client => client.SearchIssuesAsync(selectedReport.Jql, requestedFields, cts.Token))
+        jiraApiClient.Setup(client => client.SearchIssuesAsync(
+                selectedReport.Jql,
+                requestedFields,
+                selectedReport.ComputedFields,
+                cts.Token))
             .ReturnsAsync(issues);
 
         var jiraLogicService = new Mock<IJiraLogicService>(MockBehavior.Strict);
@@ -453,7 +465,11 @@ public sealed class JiraApplicationTests
             new PdfReportName("Sprint report"));
 
         var jiraApiClient = new Mock<IJiraApiClient>(MockBehavior.Strict);
-        jiraApiClient.Setup(client => client.SearchIssuesAsync(selectedReport.Jql, It.IsAny<IReadOnlyList<IssueFieldName>>(), cts.Token))
+        jiraApiClient.Setup(client => client.SearchIssuesAsync(
+                selectedReport.Jql,
+                It.IsAny<IReadOnlyList<IssueFieldName>>(),
+                selectedReport.ComputedFields,
+                cts.Token))
             .ThrowsAsync(new HttpRequestException("Jira failed."));
 
         var jiraLogicService = new Mock<IJiraLogicService>(MockBehavior.Strict);

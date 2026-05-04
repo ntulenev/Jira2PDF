@@ -1,4 +1,5 @@
 using System.Net;
+using System.Text.Json;
 
 using FluentAssertions;
 
@@ -79,7 +80,7 @@ public sealed class JiraApiClientTests
         IReadOnlyList<IssueFieldName> issueFields = null!;
 
         // Act
-        Func<Task> act = () => client.SearchIssuesAsync(new JqlQuery("project = APP"), issueFields, CancellationToken.None);
+        Func<Task> act = () => client.SearchIssuesAsync(new JqlQuery("project = APP"), issueFields, null, CancellationToken.None);
 
         // Assert
         await act.Should()
@@ -170,6 +171,7 @@ public sealed class JiraApiClientTests
         var issues = await client.SearchIssuesAsync(
             new JqlQuery("project = APP"),
             [new IssueFieldName("Summary"), new IssueFieldName("Story Points")],
+            null,
             cts.Token);
 
         // Assert
@@ -234,6 +236,236 @@ public sealed class JiraApiClientTests
         var issues = await client.SearchIssuesAsync(
             new JqlQuery("project = APP"),
             [new IssueFieldName("Sport")],
+            null,
+            cts.Token);
+
+        // Assert
+        issues.Should().ContainSingle();
+    }
+
+    [Fact(DisplayName = "SearchIssuesAsync computes linked issue progress from child statuses")]
+    [Trait("Category", "Unit")]
+    public async Task SearchIssuesAsyncWhenLinkedIssueProgressIsConfiguredComputesProgressFromChildren()
+    {
+        // Arrange
+        using var cts = new CancellationTokenSource();
+        var transport = new Mock<IJiraTransport>(MockBehavior.Strict);
+        var issueMapper = new Mock<IIssueMapper>(MockBehavior.Strict);
+
+        transport.Setup(t => t.GetAsync<List<JiraFieldDefinitionResponse>>(
+                It.Is<Uri>(uri => uri.OriginalString == "rest/api/3/field"),
+                cts.Token))
+            .ReturnsAsync(
+            [
+                new JiraFieldDefinitionResponse
+                {
+                    Id = "customfield_11728",
+                    Key = "customfield_11728",
+                    Name = "Delivery progress",
+                    ClauseNames = ["cf[11728]", "Delivery progress"]
+                }
+            ]);
+
+        var page = new JiraSearchResponse
+        {
+            Issues =
+            [
+                new JiraIssueResponse
+                {
+                    Key = "APP-1",
+                    Fields = new JiraIssueFieldsResponse
+                    {
+                        Values = CreateFieldValues(
+                            """
+                            {
+                              "customfield_11728": null,
+                              "issuelinks": [
+                                {
+                                  "type": { "name": "Polaris work item link" },
+                                  "inwardIssue": {
+                                    "key": "APP-100",
+                                    "fields": {
+                                      "status": {
+                                        "name": "In Progress",
+                                        "statusCategory": { "key": "indeterminate" }
+                                      }
+                                    }
+                                  }
+                                }
+                              ]
+                            }
+                            """)
+                    }
+                }
+            ],
+            IsLast = true
+        };
+        var children = new JiraSearchResponse
+        {
+            Issues =
+            [
+                new JiraIssueResponse
+                {
+                    Key = "APP-101",
+                    Fields = new JiraIssueFieldsResponse
+                    {
+                        Values = CreateFieldValues(
+                            """
+                            {
+                              "parent": { "key": "APP-100" },
+                              "status": {
+                                "name": "Done",
+                                "statusCategory": { "key": "done" }
+                              }
+                            }
+                            """)
+                    }
+                },
+                new JiraIssueResponse
+                {
+                    Key = "APP-102",
+                    Fields = new JiraIssueFieldsResponse
+                    {
+                        Values = CreateFieldValues(
+                            """
+                            {
+                              "parent": { "key": "APP-100" },
+                              "status": {
+                                "name": "In Progress",
+                                "statusCategory": { "key": "indeterminate" }
+                              }
+                            }
+                            """)
+                    }
+                }
+            ],
+            IsLast = true
+        };
+
+        transport.Setup(t => t.GetAsync<JiraSearchResponse>(
+                It.Is<Uri>(uri =>
+                    uri.OriginalString.Contains("rest/api/3/search/jql?", StringComparison.Ordinal)
+                    && uri.OriginalString.Contains("jql=project%20%3D%20APP", StringComparison.Ordinal)
+                    && uri.OriginalString.Contains("fields=customfield_11728%2Cissuelinks", StringComparison.Ordinal)),
+                cts.Token))
+            .ReturnsAsync(page);
+        transport.Setup(t => t.GetAsync<JiraSearchResponse>(
+                It.Is<Uri>(uri =>
+                    uri.OriginalString.Contains("rest/api/3/search/jql?", StringComparison.Ordinal)
+                    && uri.OriginalString.Contains("jql=parent%20in%20%28APP-100%29", StringComparison.Ordinal)
+                    && uri.OriginalString.Contains("fields=status%2Cparent", StringComparison.Ordinal)),
+                cts.Token))
+            .ReturnsAsync(children);
+
+        issueMapper.Setup(m => m.MapIssues(
+                It.Is<JiraSearchResponse>(searchPage =>
+                    searchPage.Issues[0].Fields!.Values["customfield_11728"].GetString() == "50% Done"),
+                It.Is<IReadOnlyDictionary<string, IReadOnlyList<string>>>(aliases =>
+                    aliases.ContainsKey("customfield_11728")
+                    && aliases["customfield_11728"].Contains("Delivery progress"))))
+            .Returns([new JiraIssue(new IssueKey("APP-1"), new Dictionary<IssueKey, FieldValue>())]);
+
+        var computedFields = new Dictionary<string, ComputedFieldConfig>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["customfield_11728"] = new ComputedFieldConfig(
+                "LinkedIssueProgress",
+                "Polaris work item link",
+                "Default",
+                "IssueCount",
+                ["done"],
+                "parent in ({keys})",
+                "{PercentDone:0}% Done")
+        };
+        var client = new JiraApiClient(transport.Object, Options.Create(CreateSettings()), issueMapper.Object);
+
+        // Act
+        var issues = await client.SearchIssuesAsync(
+            new JqlQuery("project = APP"),
+            [new IssueFieldName("Delivery progress")],
+            computedFields,
+            cts.Token);
+
+        // Assert
+        issues.Should().ContainSingle();
+    }
+
+    [Fact(DisplayName = "SearchIssuesAsync writes zero progress when linked issue progress has no links")]
+    [Trait("Category", "Unit")]
+    public async Task SearchIssuesAsyncWhenLinkedIssueProgressHasNoLinksWritesZeroProgress()
+    {
+        // Arrange
+        using var cts = new CancellationTokenSource();
+        var transport = new Mock<IJiraTransport>(MockBehavior.Strict);
+        var issueMapper = new Mock<IIssueMapper>(MockBehavior.Strict);
+
+        transport.Setup(t => t.GetAsync<List<JiraFieldDefinitionResponse>>(
+                It.Is<Uri>(uri => uri.OriginalString == "rest/api/3/field"),
+                cts.Token))
+            .ReturnsAsync(
+            [
+                new JiraFieldDefinitionResponse
+                {
+                    Id = "customfield_11728",
+                    Key = "customfield_11728",
+                    Name = "Delivery progress",
+                    ClauseNames = ["cf[11728]", "Delivery progress"]
+                }
+            ]);
+
+        var page = new JiraSearchResponse
+        {
+            Issues =
+            [
+                new JiraIssueResponse
+                {
+                    Key = "APP-1",
+                    Fields = new JiraIssueFieldsResponse
+                    {
+                        Values = CreateFieldValues(
+                            """
+                            {
+                              "customfield_11728": null,
+                              "issuelinks": []
+                            }
+                            """)
+                    }
+                }
+            ],
+            IsLast = true
+        };
+
+        transport.Setup(t => t.GetAsync<JiraSearchResponse>(
+                It.Is<Uri>(uri =>
+                    uri.OriginalString.Contains("rest/api/3/search/jql?", StringComparison.Ordinal)
+                    && uri.OriginalString.Contains("jql=project%20%3D%20APP", StringComparison.Ordinal)
+                    && uri.OriginalString.Contains("fields=customfield_11728%2Cissuelinks", StringComparison.Ordinal)),
+                cts.Token))
+            .ReturnsAsync(page);
+
+        issueMapper.Setup(m => m.MapIssues(
+                It.Is<JiraSearchResponse>(searchPage =>
+                    searchPage.Issues[0].Fields!.Values["customfield_11728"].GetString() == "0%"),
+                It.IsAny<IReadOnlyDictionary<string, IReadOnlyList<string>>>()))
+            .Returns([new JiraIssue(new IssueKey("APP-1"), new Dictionary<IssueKey, FieldValue>())]);
+
+        var computedFields = new Dictionary<string, ComputedFieldConfig>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["customfield_11728"] = new ComputedFieldConfig(
+                "LinkedIssueProgress",
+                "Polaris work item link",
+                "Default",
+                "IssueCount",
+                ["done"],
+                "parent in ({keys})",
+                "{PercentDone:0}%")
+        };
+        var client = new JiraApiClient(transport.Object, Options.Create(CreateSettings()), issueMapper.Object);
+
+        // Act
+        var issues = await client.SearchIssuesAsync(
+            new JqlQuery("project = APP"),
+            [new IssueFieldName("Delivery progress")],
+            computedFields,
             cts.Token);
 
         // Assert
@@ -290,6 +522,7 @@ public sealed class JiraApiClientTests
         var issues = await client.SearchIssuesAsync(
             new JqlQuery("project = APP"),
             [new IssueFieldName("Summary")],
+            null,
             cts.Token);
 
         // Assert
@@ -324,6 +557,7 @@ public sealed class JiraApiClientTests
         Func<Task> act = () => client.SearchIssuesAsync(
             new JqlQuery("project = APP"),
             [new IssueFieldName("Unknown Field")],
+            null,
             CancellationToken.None);
 
         // Assert
@@ -342,5 +576,14 @@ public sealed class JiraApiClientTests
             [new ReportConfig(new ReportName("Backlog"), new JqlQuery("project = APP"), [], [], new PdfReportName("Sprint report"))],
             new PdfSettings(false),
             new CsvSettings(false, false));
+    }
+
+    private static Dictionary<string, JsonElement> CreateFieldValues(string json)
+    {
+        using var document = JsonDocument.Parse(json);
+        return document.RootElement.EnumerateObject().ToDictionary(
+            static property => property.Name,
+            static property => property.Value.Clone(),
+            StringComparer.OrdinalIgnoreCase);
     }
 }
