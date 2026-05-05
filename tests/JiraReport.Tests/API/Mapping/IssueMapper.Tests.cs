@@ -3,6 +3,7 @@ using System.Text.Json;
 using FluentAssertions;
 
 using JiraReport.API.Mapping;
+using JiraReport.Models;
 using JiraReport.Models.ValueObjects;
 using JiraReport.Transport.Models;
 
@@ -146,6 +147,102 @@ public sealed class IssueMapperTests
         // Assert
         issues.Should().ContainSingle();
         issues[0].GetFieldValue(new IssueKey("Sport")).Value.Should().Be("Football");
+    }
+
+    [Fact(DisplayName = "MapIssues extracts configured JSON path before normalizing field value")]
+    [Trait("Category", "Unit")]
+    public void MapIssuesWhenJsonPathConverterIsConfiguredExtractsSelectedValue()
+    {
+        // Arrange
+        var mapper = new IssueMapper();
+        using var document = JsonDocument.Parse(
+            """
+            {
+              "customfield_11869": {
+                "start": "2026-08-01",
+                "end": "2026-08-01"
+              }
+            }
+            """);
+        var page = new JiraSearchResponse
+        {
+            Issues =
+            [
+                new JiraIssueResponse
+                {
+                    Key = "ADFPD-128",
+                    Fields = new JiraIssueFieldsResponse
+                    {
+                        Values = document.RootElement.EnumerateObject().ToDictionary(
+                            static property => property.Name,
+                            static property => property.Value.Clone(),
+                            StringComparer.OrdinalIgnoreCase)
+                    }
+                }
+            ]
+        };
+        var aliases = new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["customfield_11869"] = ["Deadline"]
+        };
+        var converters = new Dictionary<string, FieldValueConverterConfig>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["customfield_11869"] = new FieldValueConverterConfig("JsonPath", "end")
+        };
+
+        // Act
+        var issues = mapper.MapIssues(page, aliases, converters);
+
+        // Assert
+        issues.Should().ContainSingle();
+        issues[0].GetFieldValue(new IssueKey("customfield_11869")).Value.Should().Be("2026-08-01");
+        issues[0].GetFieldValue(new IssueKey("Deadline")).Value.Should().Be("2026-08-01");
+    }
+
+    [Fact(DisplayName = "MapIssues parses string JSON before extracting configured JSON path")]
+    [Trait("Category", "Unit")]
+    public void MapIssuesWhenJsonPathConverterTargetsStringJsonParsesAndExtractsSelectedValue()
+    {
+        // Arrange
+        var mapper = new IssueMapper();
+        using var document = JsonDocument.Parse(
+            """
+            {
+              "customfield_11869": "{\"start\":\"2026-08-01\",\"end\":\"2026-08-01\"}"
+            }
+            """);
+        var page = new JiraSearchResponse
+        {
+            Issues =
+            [
+                new JiraIssueResponse
+                {
+                    Key = "ADFPD-128",
+                    Fields = new JiraIssueFieldsResponse
+                    {
+                        Values = document.RootElement.EnumerateObject().ToDictionary(
+                            static property => property.Name,
+                            static property => property.Value.Clone(),
+                            StringComparer.OrdinalIgnoreCase)
+                    }
+                }
+            ]
+        };
+        var aliases = new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["customfield_11869"] = ["Deadline"]
+        };
+        var converters = new Dictionary<string, FieldValueConverterConfig>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["customfield_11869"] = new FieldValueConverterConfig("JsonPath", "end")
+        };
+
+        // Act
+        var issues = mapper.MapIssues(page, aliases, converters);
+
+        // Assert
+        issues.Should().ContainSingle();
+        issues[0].GetFieldValue(new IssueKey("Deadline")).Value.Should().Be("2026-08-01");
     }
 
     private static Dictionary<string, JsonElement> CreateFieldValues()

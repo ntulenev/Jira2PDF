@@ -191,6 +191,7 @@ public sealed class JiraApplicationTests
                 selectedReport.Jql,
                 requestedFields,
                 selectedReport.ComputedFields,
+                selectedReport.FieldValueConverters,
                 cts.Token))
             .ReturnsAsync(issues);
 
@@ -285,6 +286,7 @@ public sealed class JiraApplicationTests
                 selectedReport.Jql,
                 requestedFields,
                 selectedReport.ComputedFields,
+                selectedReport.FieldValueConverters,
                 cts.Token))
             .ReturnsAsync(issues);
 
@@ -385,6 +387,7 @@ public sealed class JiraApplicationTests
                 selectedReport.Jql,
                 requestedFields,
                 selectedReport.ComputedFields,
+                selectedReport.FieldValueConverters,
                 cts.Token))
             .ReturnsAsync(issues);
 
@@ -469,6 +472,7 @@ public sealed class JiraApplicationTests
                 selectedReport.Jql,
                 It.IsAny<IReadOnlyList<IssueFieldName>>(),
                 selectedReport.ComputedFields,
+                selectedReport.FieldValueConverters,
                 cts.Token))
             .ThrowsAsync(new HttpRequestException("Jira failed."));
 

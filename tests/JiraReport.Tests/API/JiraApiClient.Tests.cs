@@ -80,7 +80,7 @@ public sealed class JiraApiClientTests
         IReadOnlyList<IssueFieldName> issueFields = null!;
 
         // Act
-        Func<Task> act = () => client.SearchIssuesAsync(new JqlQuery("project = APP"), issueFields, null, CancellationToken.None);
+        Func<Task> act = () => client.SearchIssuesAsync(new JqlQuery("project = APP"), issueFields, null, null, CancellationToken.None);
 
         // Assert
         await act.Should()
@@ -149,7 +149,8 @@ public sealed class JiraApiClientTests
                 firstPage,
                 It.Is<IReadOnlyDictionary<string, IReadOnlyList<string>>>(aliases =>
                     aliases.ContainsKey("customfield_10001")
-                    && aliases["customfield_10001"].Contains("Story Points"))))
+                    && aliases["customfield_10001"].Contains("Story Points")),
+                It.IsAny<IReadOnlyDictionary<string, FieldValueConverterConfig>>()))
             .Returns(
             [
                 new JiraIssue(new IssueKey("APP-2"), new Dictionary<IssueKey, FieldValue>())
@@ -159,7 +160,8 @@ public sealed class JiraApiClientTests
                 secondPage,
                 It.Is<IReadOnlyDictionary<string, IReadOnlyList<string>>>(aliases =>
                     aliases.ContainsKey("customfield_10001")
-                    && aliases["customfield_10001"].Contains("Story Points"))))
+                    && aliases["customfield_10001"].Contains("Story Points")),
+                It.IsAny<IReadOnlyDictionary<string, FieldValueConverterConfig>>()))
             .Returns(
             [
                 new JiraIssue(new IssueKey("APP-1"), new Dictionary<IssueKey, FieldValue>())
@@ -171,6 +173,7 @@ public sealed class JiraApiClientTests
         var issues = await client.SearchIssuesAsync(
             new JqlQuery("project = APP"),
             [new IssueFieldName("Summary"), new IssueFieldName("Story Points")],
+            null,
             null,
             cts.Token);
 
@@ -227,7 +230,8 @@ public sealed class JiraApiClientTests
                     aliases.ContainsKey("customfield_20000")
                     && aliases["customfield_20000"].Contains("Sport")
                     && aliases.ContainsKey("customfield_11868")
-                    && aliases["customfield_11868"].Contains("Sport"))))
+                    && aliases["customfield_11868"].Contains("Sport")),
+                It.IsAny<IReadOnlyDictionary<string, FieldValueConverterConfig>>()))
             .Returns([new JiraIssue(new IssueKey("APP-1"), new Dictionary<IssueKey, FieldValue>())]);
 
         var client = new JiraApiClient(transport.Object, Options.Create(CreateSettings()), issueMapper.Object);
@@ -236,6 +240,7 @@ public sealed class JiraApiClientTests
         var issues = await client.SearchIssuesAsync(
             new JqlQuery("project = APP"),
             [new IssueFieldName("Sport")],
+            null,
             null,
             cts.Token);
 
@@ -362,7 +367,8 @@ public sealed class JiraApiClientTests
                     searchPage.Issues[0].Fields!.Values["customfield_11728"].GetString() == "50% Done"),
                 It.Is<IReadOnlyDictionary<string, IReadOnlyList<string>>>(aliases =>
                     aliases.ContainsKey("customfield_11728")
-                    && aliases["customfield_11728"].Contains("Delivery progress"))))
+                    && aliases["customfield_11728"].Contains("Delivery progress")),
+                It.IsAny<IReadOnlyDictionary<string, FieldValueConverterConfig>>()))
             .Returns([new JiraIssue(new IssueKey("APP-1"), new Dictionary<IssueKey, FieldValue>())]);
 
         var computedFields = new Dictionary<string, ComputedFieldConfig>(StringComparer.OrdinalIgnoreCase)
@@ -383,6 +389,7 @@ public sealed class JiraApiClientTests
             new JqlQuery("project = APP"),
             [new IssueFieldName("Delivery progress")],
             computedFields,
+            null,
             cts.Token);
 
         // Assert
@@ -445,7 +452,8 @@ public sealed class JiraApiClientTests
         issueMapper.Setup(m => m.MapIssues(
                 It.Is<JiraSearchResponse>(searchPage =>
                     searchPage.Issues[0].Fields!.Values["customfield_11728"].GetString() == "0%"),
-                It.IsAny<IReadOnlyDictionary<string, IReadOnlyList<string>>>()))
+                It.IsAny<IReadOnlyDictionary<string, IReadOnlyList<string>>>(),
+                It.IsAny<IReadOnlyDictionary<string, FieldValueConverterConfig>>()))
             .Returns([new JiraIssue(new IssueKey("APP-1"), new Dictionary<IssueKey, FieldValue>())]);
 
         var computedFields = new Dictionary<string, ComputedFieldConfig>(StringComparer.OrdinalIgnoreCase)
@@ -466,6 +474,7 @@ public sealed class JiraApiClientTests
             new JqlQuery("project = APP"),
             [new IssueFieldName("Delivery progress")],
             computedFields,
+            null,
             cts.Token);
 
         // Assert
@@ -513,7 +522,10 @@ public sealed class JiraApiClientTests
                 cts.Token))
             .ReturnsAsync(page);
 
-        issueMapper.Setup(m => m.MapIssues(page, It.IsAny<IReadOnlyDictionary<string, IReadOnlyList<string>>>()))
+        issueMapper.Setup(m => m.MapIssues(
+                page,
+                It.IsAny<IReadOnlyDictionary<string, IReadOnlyList<string>>>(),
+                It.IsAny<IReadOnlyDictionary<string, FieldValueConverterConfig>>()))
             .Returns([new JiraIssue(new IssueKey("APP-1"), new Dictionary<IssueKey, FieldValue>())]);
 
         var client = new JiraApiClient(transport.Object, Options.Create(CreateSettings()), issueMapper.Object);
@@ -522,6 +534,7 @@ public sealed class JiraApiClientTests
         var issues = await client.SearchIssuesAsync(
             new JqlQuery("project = APP"),
             [new IssueFieldName("Summary")],
+            null,
             null,
             cts.Token);
 
@@ -557,6 +570,7 @@ public sealed class JiraApiClientTests
         Func<Task> act = () => client.SearchIssuesAsync(
             new JqlQuery("project = APP"),
             [new IssueFieldName("Unknown Field")],
+            null,
             null,
             CancellationToken.None);
 

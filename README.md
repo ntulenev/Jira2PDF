@@ -118,6 +118,12 @@ Main section: `Jira`
             "Format": "{PercentDone:0}% Done"
           }
         },
+        "FieldValueConverters": {
+          "Deadline": {
+            "Type": "JsonPath",
+            "JsonPath": "end"
+          }
+        },
         "PdfReportName": "APP_Roadmap_Snapshot"
       }
     ]
@@ -162,6 +168,7 @@ Each report item supports:
   For Jira multi-value fields (for example `components`), each item is counted separately in summary tables (based on Jira JSON arrays, not by splitting text on commas).
 - `CountFieldsAliases`: optional display labels for summary table titles by configured field key/name.
 - `ComputedFields`: optional calculated field values by configured field key/name. `LinkedIssueProgress` can calculate Jira Product Discovery-style delivery progress from linked Jira work items.
+- `FieldValueConverters`: optional raw Jira field value converters by configured field key/name or output alias. `JsonPath` extracts a specific property from an object value before it is displayed, counted, exported to CSV, or rendered to PDF.
 - `PdfReportName`: required report title/file base name used for generated PDF name.
 
 `LinkedIssueProgress` settings:
@@ -171,6 +178,10 @@ Each report item supports:
 - `DoneStatusCategories`: Jira status category keys counted as done.
 - `ChildJqlTemplate`: JQL used to load direct children of linked work items. `{keys}` is replaced with linked work item keys.
 - `Format`: output text. Supported placeholders are `{PercentDone:0}`, `{Done}`, and `{Total}`.
+
+`JsonPath` field converter settings:
+- `Type`: `JsonPath`.
+- `JsonPath`: dot-separated object property path, or numeric array index segment. Example: for `{"start":"2026-08-01","end":"2026-08-01"}`, use `"end"` to display only `2026-08-01`.
 
 ### PDF Settings
 

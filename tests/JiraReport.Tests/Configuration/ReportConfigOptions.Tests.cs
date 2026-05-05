@@ -34,6 +34,14 @@ public sealed class ReportConfigOptionsTests
                     Format = "{PercentDone:0}% Done"
                 }
             },
+            FieldValueConverters = new Dictionary<string, FieldValueConverterOptions>
+            {
+                ["customfield_11869"] = new FieldValueConverterOptions
+                {
+                    Type = "JsonPath",
+                    JsonPath = "end"
+                }
+            },
             PdfReportName = "Sprint report"
         };
 
@@ -48,6 +56,8 @@ public sealed class ReportConfigOptionsTests
         options.CountFieldsAliases.Should().ContainKey("customfield_11854").WhoseValue.Should().Be("Roadmap");
         options.ComputedFields.Should().ContainKey("customfield_11728");
         options.ComputedFields["customfield_11728"].Type.Should().Be("LinkedIssueProgress");
+        options.FieldValueConverters.Should().ContainKey("customfield_11869");
+        options.FieldValueConverters["customfield_11869"].JsonPath.Should().Be("end");
     }
 
     [Fact(DisplayName = "Validator reports missing name")]

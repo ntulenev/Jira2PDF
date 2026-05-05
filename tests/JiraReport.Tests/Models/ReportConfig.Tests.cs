@@ -67,6 +67,10 @@ public sealed class ReportConfigTests
                 "parent in ({keys})",
                 "{PercentDone:0}% Done")
         };
+        var fieldValueConverters = new Dictionary<string, FieldValueConverterConfig>
+        {
+            [" customfield_11869 "] = new FieldValueConverterConfig("JsonPath", "end")
+        };
 
         // Act
         var config = new ReportConfig(
@@ -77,7 +81,8 @@ public sealed class ReportConfigTests
             new PdfReportName("Sprint report"),
             outputAliases,
             countAliases,
-            computedFields);
+            computedFields,
+            fieldValueConverters);
 
         outputFields.Add(new IssueFieldName("assignee"));
         countFields.Add(new IssueFieldName("priority"));
@@ -91,6 +96,7 @@ public sealed class ReportConfigTests
             ["done"],
             "parent in ({keys})",
             "{PercentDone:0}% Done");
+        fieldValueConverters["customfield_14454"] = new FieldValueConverterConfig("JsonPath", "value");
 
         // Assert
         config.Name.Value.Should().Be("Backlog");
@@ -104,5 +110,8 @@ public sealed class ReportConfigTests
         config.CountFieldsAliases.Should().NotContainKey("customfield_14454");
         config.ComputedFields.Should().ContainKey("customfield_11728");
         config.ComputedFields.Should().NotContainKey("customfield_14454");
+        config.FieldValueConverters.Should().ContainKey("customfield_11869");
+        config.FieldValueConverters["customfield_11869"].JsonPath.Should().Be("end");
+        config.FieldValueConverters.Should().NotContainKey("customfield_14454");
     }
 }
