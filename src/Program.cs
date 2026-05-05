@@ -114,7 +114,8 @@ static IReadOnlyList<ReportConfig> ResolveReports(IReadOnlyList<ReportConfigOpti
             new PdfReportName(report.PdfReportName.Trim()),
             report.OutputFieldsAliases,
             report.CountFieldsAliases,
-            ResolveComputedFields(report.ComputedFields)))
+            ResolveComputedFields(report.ComputedFields),
+            ResolveFieldValueConverters(report.FieldValueConverters, report.OutputFieldsAliases)))
         .ToList();
 
     if (reports.Count == 0)
@@ -159,4 +160,52 @@ static IReadOnlyDictionary<string, ComputedFieldConfig> ResolveComputedFields(
     }
 
     return computedFields;
+}
+
+static IReadOnlyDictionary<string, FieldValueConverterConfig> ResolveFieldValueConverters(
+    IReadOnlyDictionary<string, FieldValueConverterOptions>? sourceConverters,
+    IReadOnlyDictionary<string, string>? outputFieldAliases)
+{
+    if (sourceConverters is null || sourceConverters.Count == 0)
+    {
+        return new Dictionary<string, FieldValueConverterConfig>(StringComparer.OrdinalIgnoreCase);
+    }
+
+    var converters = new Dictionary<string, FieldValueConverterConfig>(StringComparer.OrdinalIgnoreCase);
+    foreach (var (field, options) in sourceConverters)
+    {
+        if (string.IsNullOrWhiteSpace(field) ||
+            string.IsNullOrWhiteSpace(options.Type) ||
+            string.IsNullOrWhiteSpace(options.JsonPath))
+        {
+            continue;
+        }
+
+        converters[ResolveConfiguredConverterField(field, outputFieldAliases)] =
+            new FieldValueConverterConfig(options.Type, options.JsonPath);
+    }
+
+    return converters;
+}
+
+static string ResolveConfiguredConverterField(
+    string field,
+    IReadOnlyDictionary<string, string>? outputFieldAliases)
+{
+    var normalizedField = field.Trim();
+    if (outputFieldAliases is null || outputFieldAliases.Count == 0)
+    {
+        return normalizedField;
+    }
+
+    foreach (var (configuredField, alias) in outputFieldAliases)
+    {
+        if (string.Equals(alias?.Trim(), normalizedField, StringComparison.OrdinalIgnoreCase) &&
+            !string.IsNullOrWhiteSpace(configuredField))
+        {
+            return configuredField.Trim();
+        }
+    }
+
+    return normalizedField;
 }

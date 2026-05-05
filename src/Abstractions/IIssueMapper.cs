@@ -13,8 +13,10 @@ internal interface IIssueMapper
     /// </summary>
     /// <param name="page">Search page DTO.</param>
     /// <param name="aliasesByApiField">Configured aliases grouped by API field key.</param>
+    /// <param name="convertersByApiField">Configured value converters grouped by API field key.</param>
     /// <returns>Mapped issue list for the page.</returns>
     IReadOnlyList<JiraIssue> MapIssues(
         JiraSearchResponse page,
-        IReadOnlyDictionary<string, IReadOnlyList<string>> aliasesByApiField);
+        IReadOnlyDictionary<string, IReadOnlyList<string>> aliasesByApiField,
+        IReadOnlyDictionary<string, FieldValueConverterConfig>? convertersByApiField = null);
 }

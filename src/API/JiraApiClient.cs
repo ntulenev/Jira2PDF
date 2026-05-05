@@ -38,6 +38,7 @@ internal sealed class JiraApiClient : IJiraApiClient
         JqlQuery jql,
         IReadOnlyList<IssueFieldName> issueFields,
         IReadOnlyDictionary<string, ComputedFieldConfig>? computedFields,
+        IReadOnlyDictionary<string, FieldValueConverterConfig>? fieldValueConverters,
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(issueFields);
@@ -47,6 +48,10 @@ internal sealed class JiraApiClient : IJiraApiClient
         var resolvedFields = await ResolveRequestedFieldsAsync(issueFields, cancellationToken).ConfigureAwait(false);
         var fieldAliases = await GetFieldAliasesAsync(cancellationToken).ConfigureAwait(false);
         var resolvedComputedFields = ResolveComputedFields(resolvedFields, computedFields, fieldAliases);
+        var resolvedFieldValueConverters = ResolveFieldValueConverters(
+            resolvedFields,
+            fieldValueConverters,
+            fieldAliases);
         var requestedFieldsCsv = BuildRequestedFieldsCsv(resolvedFields, resolvedComputedFields);
         var aliasesByApiField = BuildAliasesByApiField(resolvedFields);
 
@@ -56,6 +61,7 @@ internal sealed class JiraApiClient : IJiraApiClient
                     jqlText,
                     requestedFieldsCsv,
                     aliasesByApiField,
+                    resolvedFieldValueConverters,
                     resolvedComputedFields,
                     pageSize,
                     cancellationToken)
@@ -67,6 +73,7 @@ internal sealed class JiraApiClient : IJiraApiClient
                     jqlText,
                     requestedFieldsCsv,
                     aliasesByApiField,
+                    resolvedFieldValueConverters,
                     resolvedComputedFields,
                     pageSize,
                     cancellationToken)
@@ -78,6 +85,7 @@ internal sealed class JiraApiClient : IJiraApiClient
         string jql,
         string requestedFieldsCsv,
         IReadOnlyDictionary<string, IReadOnlyList<string>> aliasesByApiField,
+        IReadOnlyDictionary<string, FieldValueConverterConfig> convertersByApiField,
         IReadOnlyDictionary<string, ComputedFieldConfig> computedFieldsByApiField,
         int pageSize,
         CancellationToken cancellationToken)
@@ -98,7 +106,7 @@ internal sealed class JiraApiClient : IJiraApiClient
             var page = await GetSearchPageAsync(searchUrl, cancellationToken).ConfigureAwait(false);
             await ApplyComputedFieldsAsync(page, computedFieldsByApiField, pageSize, cancellationToken)
                 .ConfigureAwait(false);
-            issues.AddRange(_issueMapper.MapIssues(page, aliasesByApiField));
+            issues.AddRange(_issueMapper.MapIssues(page, aliasesByApiField, convertersByApiField));
 
             nextPageToken = page.NextPageToken;
             if (page.Issues.Count == 0 || page.IsLast || string.IsNullOrWhiteSpace(nextPageToken))
@@ -114,6 +122,7 @@ internal sealed class JiraApiClient : IJiraApiClient
         string jql,
         string requestedFieldsCsv,
         IReadOnlyDictionary<string, IReadOnlyList<string>> aliasesByApiField,
+        IReadOnlyDictionary<string, FieldValueConverterConfig> convertersByApiField,
         IReadOnlyDictionary<string, ComputedFieldConfig> computedFieldsByApiField,
         int pageSize,
         CancellationToken cancellationToken)
@@ -130,7 +139,7 @@ internal sealed class JiraApiClient : IJiraApiClient
             var page = await GetSearchPageAsync(searchUrl, cancellationToken).ConfigureAwait(false);
             await ApplyComputedFieldsAsync(page, computedFieldsByApiField, pageSize, cancellationToken)
                 .ConfigureAwait(false);
-            issues.AddRange(_issueMapper.MapIssues(page, aliasesByApiField));
+            issues.AddRange(_issueMapper.MapIssues(page, aliasesByApiField, convertersByApiField));
 
             if (page.Issues.Count == 0)
             {
@@ -746,8 +755,51 @@ internal sealed class JiraApiClient : IJiraApiClient
         return resolvedComputedFields;
     }
 
+    private static Dictionary<string, FieldValueConverterConfig> ResolveFieldValueConverters(
+        IReadOnlyList<ResolvedRequestedField> resolvedFields,
+        IReadOnlyDictionary<string, FieldValueConverterConfig>? fieldValueConverters,
+        IReadOnlyDictionary<string, IReadOnlyList<string>> fieldAliases)
+    {
+        var resolvedConverters = new Dictionary<string, FieldValueConverterConfig>(StringComparer.OrdinalIgnoreCase);
+        if (fieldValueConverters is null || fieldValueConverters.Count == 0)
+        {
+            return resolvedConverters;
+        }
+
+        var requestedApiFields = resolvedFields
+            .Select(static field => field.ApiField)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var (configuredField, converter) in fieldValueConverters)
+        {
+            if (!IsJsonPathConverter(converter))
+            {
+                continue;
+            }
+
+            var normalizedField = NormalizeFieldKey(configuredField);
+            var apiFields = TryResolveApiFields(normalizedField, fieldAliases, out var resolvedApiFields)
+                ? resolvedApiFields
+                : [normalizedField];
+
+            foreach (var apiField in apiFields)
+            {
+                if (requestedApiFields.Contains(apiField))
+                {
+                    resolvedConverters[apiField] = converter;
+                }
+            }
+        }
+
+        return resolvedConverters;
+    }
+
     private static bool IsLinkedIssueProgress(ComputedFieldConfig computedField)
         => string.Equals(computedField.Type, "LinkedIssueProgress", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsJsonPathConverter(FieldValueConverterConfig converter)
+        => string.Equals(converter.Type, "JsonPath", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(converter.Type, "JsonProperty", StringComparison.OrdinalIgnoreCase);
 
     private static string BuildRequestedFieldsCsv(
         IReadOnlyList<ResolvedRequestedField> resolvedFields,

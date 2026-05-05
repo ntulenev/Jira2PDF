@@ -18,6 +18,7 @@ internal sealed record ReportConfig
     /// <param name="outputFieldsAliases">Optional display aliases for requested output fields.</param>
     /// <param name="countFieldsAliases">Optional display aliases for requested grouped count fields.</param>
     /// <param name="computedFields">Optional computed fields by configured field key or name.</param>
+    /// <param name="fieldValueConverters">Optional field value converters by configured field key or name.</param>
     public ReportConfig(
         ReportName name,
         JqlQuery jql,
@@ -26,7 +27,8 @@ internal sealed record ReportConfig
         PdfReportName pdfReportName,
         IReadOnlyDictionary<string, string>? outputFieldsAliases = null,
         IReadOnlyDictionary<string, string>? countFieldsAliases = null,
-        IReadOnlyDictionary<string, ComputedFieldConfig>? computedFields = null)
+        IReadOnlyDictionary<string, ComputedFieldConfig>? computedFields = null,
+        IReadOnlyDictionary<string, FieldValueConverterConfig>? fieldValueConverters = null)
     {
         ArgumentNullException.ThrowIfNull(outputFields);
         ArgumentNullException.ThrowIfNull(countFields);
@@ -39,6 +41,7 @@ internal sealed record ReportConfig
         OutputFieldsAliases = NormalizeAliases(outputFieldsAliases);
         CountFieldsAliases = NormalizeAliases(countFieldsAliases);
         ComputedFields = NormalizeComputedFields(computedFields);
+        FieldValueConverters = NormalizeFieldValueConverters(fieldValueConverters);
     }
 
     /// <summary>
@@ -75,6 +78,11 @@ internal sealed record ReportConfig
     /// Gets optional computed fields by configured field key or name.
     /// </summary>
     public IReadOnlyDictionary<string, ComputedFieldConfig> ComputedFields { get; }
+
+    /// <summary>
+    /// Gets optional field value converters by configured field key or name.
+    /// </summary>
+    public IReadOnlyDictionary<string, FieldValueConverterConfig> FieldValueConverters { get; }
 
     /// <summary>
     /// Gets required PDF report title/file base name.
@@ -125,8 +133,32 @@ internal sealed record ReportConfig
         return normalizedComputedFields.Count > 0 ? normalizedComputedFields : _emptyComputedFields;
     }
 
+    private static IReadOnlyDictionary<string, FieldValueConverterConfig> NormalizeFieldValueConverters(
+        IReadOnlyDictionary<string, FieldValueConverterConfig>? fieldValueConverters)
+    {
+        if (fieldValueConverters is null || fieldValueConverters.Count == 0)
+        {
+            return _emptyFieldValueConverters;
+        }
+
+        var normalizedConverters = new Dictionary<string, FieldValueConverterConfig>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (field, config) in fieldValueConverters)
+        {
+            if (string.IsNullOrWhiteSpace(field) || config is null)
+            {
+                continue;
+            }
+
+            normalizedConverters[field.Trim()] = config;
+        }
+
+        return normalizedConverters.Count > 0 ? normalizedConverters : _emptyFieldValueConverters;
+    }
+
     private static readonly IReadOnlyDictionary<string, string> _emptyAliases =
         new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
     private static readonly IReadOnlyDictionary<string, ComputedFieldConfig> _emptyComputedFields =
         new Dictionary<string, ComputedFieldConfig>(StringComparer.OrdinalIgnoreCase);
+    private static readonly IReadOnlyDictionary<string, FieldValueConverterConfig> _emptyFieldValueConverters =
+        new Dictionary<string, FieldValueConverterConfig>(StringComparer.OrdinalIgnoreCase);
 }

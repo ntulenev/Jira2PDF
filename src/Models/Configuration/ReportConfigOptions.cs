@@ -45,6 +45,11 @@ internal sealed class ReportConfigOptions
     public IReadOnlyDictionary<string, ComputedFieldOptions>? ComputedFields { get; init; }
 
     /// <summary>
+    /// Gets optional field value converters by configured field key or name.
+    /// </summary>
+    public IReadOnlyDictionary<string, FieldValueConverterOptions>? FieldValueConverters { get; init; }
+
+    /// <summary>
     /// Gets required PDF report title/file base name.
     /// </summary>
     [Required]

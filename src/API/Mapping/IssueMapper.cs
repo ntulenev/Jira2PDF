@@ -16,7 +16,8 @@ internal sealed class IssueMapper : IIssueMapper
     /// <inheritdoc />
     public IReadOnlyList<JiraIssue> MapIssues(
         JiraSearchResponse page,
-        IReadOnlyDictionary<string, IReadOnlyList<string>> aliasesByApiField)
+        IReadOnlyDictionary<string, IReadOnlyList<string>> aliasesByApiField,
+        IReadOnlyDictionary<string, FieldValueConverterConfig>? convertersByApiField = null)
     {
         ArgumentNullException.ThrowIfNull(page);
         ArgumentNullException.ThrowIfNull(aliasesByApiField);
@@ -37,7 +38,8 @@ internal sealed class IssueMapper : IIssueMapper
                     foreach (var (fieldKey, rawValue) in issue.Fields.Values)
                     {
                         var normalizedFieldKey = NormalizeFieldKey(fieldKey);
-                        var normalizedValues = NormalizeFieldValues(normalizedFieldKey, rawValue);
+                        var effectiveValue = ApplyFieldValueConverter(normalizedFieldKey, rawValue, convertersByApiField);
+                        var normalizedValues = NormalizeFieldValues(normalizedFieldKey, effectiveValue);
                         var flattenedValue = normalizedValues.Count == 0
                             ? "-"
                             : string.Join(", ", normalizedValues);
@@ -45,7 +47,7 @@ internal sealed class IssueMapper : IIssueMapper
                         fields[issueFieldKey] = new FieldValue(flattenedValue);
 
                         List<FieldValue>? fieldItems = null;
-                        if (rawValue.ValueKind == JsonValueKind.Array && normalizedValues.Count > 0)
+                        if (effectiveValue.ValueKind == JsonValueKind.Array && normalizedValues.Count > 0)
                         {
                             fieldItems = [.. normalizedValues.Select(static item => new FieldValue(item))];
                             multiValueFields[issueFieldKey] = fieldItems;
@@ -81,6 +83,79 @@ internal sealed class IssueMapper : IIssueMapper
         {
             fields[key] = value;
         }
+    }
+
+    private static JsonElement ApplyFieldValueConverter(
+        string fieldKey,
+        JsonElement rawValue,
+        IReadOnlyDictionary<string, FieldValueConverterConfig>? convertersByApiField)
+    {
+        if (convertersByApiField is null ||
+            !convertersByApiField.TryGetValue(fieldKey, out var converter) ||
+            !IsJsonPathConverter(converter))
+        {
+            return rawValue;
+        }
+
+        return TrySelectJsonPath(rawValue, converter.JsonPath, out var convertedValue)
+            ? convertedValue
+            : rawValue;
+    }
+
+    private static bool IsJsonPathConverter(FieldValueConverterConfig converter)
+        => string.Equals(converter.Type, "JsonPath", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(converter.Type, "JsonProperty", StringComparison.OrdinalIgnoreCase);
+
+    private static bool TrySelectJsonPath(JsonElement source, string jsonPath, out JsonElement value)
+    {
+        value = source;
+        if (source.ValueKind == JsonValueKind.String)
+        {
+            var sourceText = source.GetString();
+            if (string.IsNullOrWhiteSpace(sourceText))
+            {
+                value = default;
+                return false;
+            }
+
+            using var document = JsonDocument.Parse(sourceText);
+            return TrySelectJsonPath(document.RootElement, jsonPath, out value);
+        }
+
+        var current = source;
+
+        foreach (var segment in jsonPath.Split('.', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            if (!TrySelectJsonPathSegment(current, segment, out current))
+            {
+                value = default;
+                return false;
+            }
+        }
+
+        value = current.Clone();
+        return true;
+    }
+
+    private static bool TrySelectJsonPathSegment(JsonElement source, string segment, out JsonElement value)
+    {
+        value = default;
+        if (source.ValueKind == JsonValueKind.Object &&
+            source.TryGetProperty(segment, out value))
+        {
+            return true;
+        }
+
+        if (source.ValueKind != JsonValueKind.Array ||
+            !int.TryParse(segment, NumberStyles.None, CultureInfo.InvariantCulture, out var index) ||
+            index < 0 ||
+            index >= source.GetArrayLength())
+        {
+            return false;
+        }
+
+        value = source.EnumerateArray().ElementAt(index);
+        return true;
     }
 
     private static bool IsMissingValue(FieldValue value) =>
