@@ -16,5 +16,6 @@ public sealed class CsvOptionsTests
         // Assert
         options.Enabled.Should().BeFalse();
         options.DisplayHeaders.Should().BeFalse();
+        options.OpenAfterGeneration.Should().BeFalse();
     }
 }

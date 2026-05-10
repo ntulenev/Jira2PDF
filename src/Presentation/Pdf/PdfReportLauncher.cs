@@ -13,9 +13,20 @@ internal sealed class PdfReportLauncher : IPdfReportLauncher
     /// <inheritdoc />
     public void Open(PdfFilePath pdfPath)
     {
+        OpenFile(pdfPath.Value);
+    }
+
+    /// <inheritdoc />
+    public void Open(CsvFilePath csvPath)
+    {
+        OpenFile(csvPath.Value);
+    }
+
+    private static void OpenFile(string filePath)
+    {
         _ = Process.Start(new ProcessStartInfo
         {
-            FileName = pdfPath.Value,
+            FileName = filePath,
             UseShellExecute = true
         });
     }

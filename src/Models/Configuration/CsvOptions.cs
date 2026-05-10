@@ -14,4 +14,9 @@ internal sealed class CsvOptions
     /// Gets a value indicating whether CSV output should include header row.
     /// </summary>
     public bool DisplayHeaders { get; init; }
+
+    /// <summary>
+    /// Gets a value indicating whether generated CSV should be opened after the workflow finishes.
+    /// </summary>
+    public bool OpenAfterGeneration { get; init; }
 }

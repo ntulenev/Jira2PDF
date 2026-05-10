@@ -117,6 +117,11 @@ internal sealed class JiraApplication : IJiraApplication
                     }).ConfigureAwait(false);
 
                 _jiraPresentationService.ShowCsvSaved(csvPath);
+
+                if (_settings.Csv.OpenAfterGeneration)
+                {
+                    _pdfReportLauncher.Open(csvPath);
+                }
             }
 
             if (_settings.Pdf.OpenAfterGeneration)

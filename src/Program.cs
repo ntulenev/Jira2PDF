@@ -62,7 +62,7 @@ builder.Services.AddSingleton(sp =>
         jiraSource.RetryCount,
         reports,
         new PdfSettings(pdfSource.OpenAfterGeneration),
-        new CsvSettings(csvSource.Enabled, csvSource.DisplayHeaders),
+        new CsvSettings(csvSource.Enabled, csvSource.DisplayHeaders, csvSource.OpenAfterGeneration),
         uiSource.ReportSelectionPageSize is int pageSize
             ? new UiSettings(pageSize)
             : null);

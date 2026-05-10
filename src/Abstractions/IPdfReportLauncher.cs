@@ -3,7 +3,7 @@ using JiraReport.Models.ValueObjects;
 namespace JiraReport.Abstractions;
 
 /// <summary>
-/// Opens generated PDF reports in the system default application.
+/// Opens generated report files in the system default application.
 /// </summary>
 internal interface IPdfReportLauncher
 {
@@ -12,4 +12,10 @@ internal interface IPdfReportLauncher
     /// </summary>
     /// <param name="pdfPath">Absolute path to generated PDF report.</param>
     void Open(PdfFilePath pdfPath);
+
+    /// <summary>
+    /// Opens the generated CSV report.
+    /// </summary>
+    /// <param name="csvPath">Absolute path to generated CSV report.</param>
+    void Open(CsvFilePath csvPath);
 }

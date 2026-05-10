@@ -357,6 +357,113 @@ public sealed class JiraApplicationTests
         csvReportWriter.VerifyAll();
     }
 
+    [Fact(DisplayName = "RunAsync opens CSV when configured")]
+    [Trait("Category", "Unit")]
+    public async Task RunAsyncWhenCsvAutoOpenIsEnabledOpensGeneratedCsv()
+    {
+        // Arrange
+        using var cts = new CancellationTokenSource();
+        var selectedReport = new ReportConfig(
+            new ReportName("Backlog"),
+            new JqlQuery("project = APP"),
+            [new IssueFieldName("summary")],
+            [],
+            new PdfReportName("Sprint report"));
+        var outputColumns = new[] { new OutputColumn(new IssueKey("summary"), new OutputColumnHeader("Summary"), static issue => issue.GetFieldValue(new IssueKey("summary"))) };
+        var requestedFields = new[] { new IssueFieldName("summary") };
+        var defaultPdfPath = new PdfFilePath(@"C:\reports\default.pdf");
+        var outputPath = new PdfFilePath(@"C:\reports\resolved.pdf");
+        var csvPath = new CsvFilePath(@"C:\reports\resolved_raw.csv");
+        var issues = new[] { new JiraIssue(new IssueKey("APP-1"), new Dictionary<IssueKey, FieldValue> { [new IssueKey("summary")] = new FieldValue("Implement report") }) };
+        var report = new JiraJqlReport(
+            new PdfReportName("Sprint report"),
+            new ReportName("Backlog"),
+            new JqlQuery("project = APP"),
+            new DateTimeOffset(2026, 2, 28, 18, 0, 0, TimeSpan.Zero),
+            issues,
+            []);
+
+        var jiraApiClient = new Mock<IJiraApiClient>(MockBehavior.Strict);
+        jiraApiClient.Setup(client => client.SearchIssuesAsync(
+                selectedReport.Jql,
+                requestedFields,
+                selectedReport.ComputedFields,
+                selectedReport.FieldValueConverters,
+                cts.Token))
+            .ReturnsAsync(issues);
+
+        var jiraLogicService = new Mock<IJiraLogicService>(MockBehavior.Strict);
+        jiraLogicService.Setup(service => service.ResolveOutputColumns(
+                selectedReport.OutputFields,
+                selectedReport.OutputFieldsAliases))
+            .Returns(outputColumns);
+        jiraLogicService.Setup(service => service.ResolveRequestedIssueFields(selectedReport.OutputFields, selectedReport.CountFields))
+            .Returns(requestedFields);
+        jiraLogicService.Setup(service => service.BuildDefaultPdfPath(selectedReport.PdfReportName, It.IsAny<DateTimeOffset>()))
+            .Returns(defaultPdfPath);
+        jiraLogicService.Setup(service => service.BuildReport(
+                selectedReport.PdfReportName,
+                selectedReport.Name,
+                selectedReport.Jql,
+                issues,
+                selectedReport.CountFields,
+                selectedReport.CountFieldsAliases))
+            .Returns(report);
+
+        var jiraPresentationService = new Mock<IJiraPresentationService>(MockBehavior.Strict);
+        jiraPresentationService.Setup(service => service.SelectReportConfig(It.IsAny<IReadOnlyList<ReportConfig>>()))
+            .Returns(selectedReport);
+        jiraPresentationService.Setup(service => service.ResolvePdfPath(defaultPdfPath))
+            .Returns(outputPath);
+        jiraPresentationService.Setup(service => service.RunLoadingAsync(
+                "Preparing report...",
+                It.IsAny<Func<Action<string>, Task<JiraJqlReport>>>()))
+            .Returns<string, Func<Action<string>, Task<JiraJqlReport>>>((_, action) => action(static _ => { }));
+        jiraPresentationService.Setup(service => service.ShowReport(report, outputColumns));
+        jiraPresentationService.Setup(service => service.RunLoadingAsync(
+                "Preparing PDF...",
+                It.IsAny<Func<Action<string>, Task>>()))
+            .Returns<string, Func<Action<string>, Task>>((_, action) => action(static _ => { }));
+        jiraPresentationService.Setup(service => service.ShowPdfSaved(outputPath));
+        jiraPresentationService.Setup(service => service.RunLoadingAsync(
+                "Preparing CSV...",
+                It.IsAny<Func<Action<string>, Task>>()))
+            .Returns<string, Func<Action<string>, Task>>((_, action) => action(static _ => { }));
+        jiraPresentationService.Setup(service => service.ShowCsvSaved(csvPath));
+
+        var settings = CreateSettings(csvEnabled: true, displayHeaders: true, csvOpenAfterGeneration: true);
+
+        var pdfReportRenderer = new Mock<IPdfReportRenderer>(MockBehavior.Strict);
+        pdfReportRenderer.Setup(renderer => renderer.RenderReport(report, settings.BaseUrl, outputPath, outputColumns));
+
+        var pdfReportLauncher = new Mock<IPdfReportLauncher>(MockBehavior.Strict);
+        pdfReportLauncher.Setup(launcher => launcher.Open(csvPath));
+
+        var csvReportWriter = new Mock<ICsvReportWriter>(MockBehavior.Strict);
+        csvReportWriter.Setup(writer => writer.WriteReportAsync(report, csvPath, outputColumns, true))
+            .Returns(Task.CompletedTask);
+
+        var app = new JiraApplication(
+            Options.Create(settings),
+            jiraApiClient.Object,
+            jiraLogicService.Object,
+            jiraPresentationService.Object,
+            pdfReportRenderer.Object,
+            pdfReportLauncher.Object,
+            csvReportWriter.Object);
+
+        // Act
+        await app.RunAsync(cts.Token);
+
+        // Assert
+        jiraApiClient.VerifyAll();
+        jiraLogicService.VerifyAll();
+        jiraPresentationService.VerifyAll();
+        pdfReportRenderer.VerifyAll();
+        pdfReportLauncher.VerifyAll();
+        csvReportWriter.VerifyAll();
+    }
+
     [Fact(DisplayName = "RunAsync opens PDF when configured")]
     [Trait("Category", "Unit")]
     public async Task RunAsyncWhenPdfAutoOpenIsEnabledOpensGeneratedPdf()
@@ -517,7 +624,7 @@ public sealed class JiraApplicationTests
         jiraPresentationService.VerifyAll();
     }
 
-    private static AppSettings CreateSettings(bool pdfOpenAfterGeneration = false, bool csvEnabled = false, bool displayHeaders = false)
+    private static AppSettings CreateSettings(bool pdfOpenAfterGeneration = false, bool csvEnabled = false, bool displayHeaders = false, bool csvOpenAfterGeneration = false)
     {
         return new AppSettings(
             new JiraBaseUrl("https://example.test"),
@@ -527,6 +634,6 @@ public sealed class JiraApplicationTests
             0,
             [new ReportConfig(new ReportName("Backlog"), new JqlQuery("project = APP"), [], [], new PdfReportName("Sprint report"))],
             new PdfSettings(pdfOpenAfterGeneration),
-            new CsvSettings(csvEnabled, displayHeaders));
+            new CsvSettings(csvEnabled, displayHeaders, csvOpenAfterGeneration));
     }
 }
