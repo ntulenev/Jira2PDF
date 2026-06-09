@@ -16,13 +16,15 @@ internal sealed record JiraJqlReport
     /// <param name="generatedAt">Generation timestamp.</param>
     /// <param name="issues">Loaded issues.</param>
     /// <param name="countTables">Prepared grouped summary tables.</param>
+    /// <param name="flowPathGroups"></param>
     public JiraJqlReport(
         PdfReportName title,
         ReportName configName,
         JqlQuery jql,
         DateTimeOffset generatedAt,
         IReadOnlyList<JiraIssue> issues,
-        IReadOnlyList<CountTable> countTables)
+        IReadOnlyList<CountTable> countTables,
+        IReadOnlyList<FlowPathGroup>? flowPathGroups = null)
     {
         ArgumentNullException.ThrowIfNull(issues);
         ArgumentNullException.ThrowIfNull(countTables);
@@ -33,6 +35,7 @@ internal sealed record JiraJqlReport
         GeneratedAt = generatedAt;
         Issues = issues;
         CountTables = countTables;
+        FlowPathGroups = flowPathGroups ?? [];
     }
 
     /// <summary>
@@ -64,4 +67,7 @@ internal sealed record JiraJqlReport
     /// Gets configured grouped summary tables.
     /// </summary>
     public IReadOnlyList<CountTable> CountTables { get; }
+
+    /// <summary>Gets PDF-only workflow path analytics.</summary>
+    public IReadOnlyList<FlowPathGroup> FlowPathGroups { get; }
 }

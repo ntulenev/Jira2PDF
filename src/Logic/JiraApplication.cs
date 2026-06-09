@@ -1,4 +1,5 @@
 using JiraReport.Abstractions;
+using JiraReport.Models;
 using JiraReport.Models.Configuration;
 using JiraReport.Models.ValueObjects;
 
@@ -61,6 +62,11 @@ internal sealed class JiraApplication : IJiraApplication
             var requestedIssueFields = _jiraLogicService.ResolveRequestedIssueFields(
                 selectedReportConfig.OutputFields,
                 selectedReportConfig.CountFields);
+            if (selectedReportConfig.BuildFlowTransitions &&
+                requestedIssueFields.All(static field => !string.Equals(field.Value, "created", StringComparison.OrdinalIgnoreCase)))
+            {
+                requestedIssueFields = [.. requestedIssueFields, new IssueFieldName("created")];
+            }
             var reportTitle = selectedReportConfig.PdfReportName;
             var defaultPdfPath = _jiraLogicService.BuildDefaultPdfPath(reportTitle, DateTimeOffset.Now);
             var outputPath = _jiraPresentationService.ResolvePdfPath(defaultPdfPath);
@@ -79,14 +85,25 @@ internal sealed class JiraApplication : IJiraApplication
                             cancellationToken)
                         .ConfigureAwait(false);
 
+                    var flowGroups = Array.Empty<FlowPathGroup>();
+                    if (selectedReportConfig.BuildFlowTransitions)
+                    {
+                        setLoadingStatus("Loading status transitions...");
+                        var flows = await _jiraApiClient.LoadIssueFlowsAsync(issues, cancellationToken).ConfigureAwait(false);
+                        flowGroups = [.. _jiraLogicService.BuildFlowPathGroups(flows)];
+                    }
+
                     setLoadingStatus("Building report data...");
-                    return _jiraLogicService.BuildReport(
+                    var builtReport = _jiraLogicService.BuildReport(
                         reportTitle,
                         selectedReportConfig.Name,
                         jql,
                         issues,
                         selectedReportConfig.CountFields,
                         selectedReportConfig.CountFieldsAliases);
+                    return new JiraJqlReport(
+                        builtReport.Title, builtReport.ConfigName, builtReport.Jql, builtReport.GeneratedAt,
+                        builtReport.Issues, builtReport.CountTables, flowGroups);
                 }).ConfigureAwait(false);
 
             _jiraPresentationService.ShowReport(report, outputColumns);

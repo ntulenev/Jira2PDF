@@ -13,4 +13,7 @@ internal interface IJiraTransport
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Deserialized response model.</returns>
     Task<TDto?> GetAsync<TDto>(Uri url, CancellationToken cancellationToken);
+
+    /// <summary>Sends POST request and deserializes response payload.</summary>
+    Task<TDto?> PostAsync<TRequest, TDto>(Uri url, TRequest request, CancellationToken cancellationToken);
 }

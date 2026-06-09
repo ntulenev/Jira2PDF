@@ -53,4 +53,7 @@ internal interface IJiraLogicService
         IReadOnlyList<JiraIssue> issues,
         IReadOnlyList<IssueFieldName>? configuredCountFields,
         IReadOnlyDictionary<string, string>? configuredCountFieldAliases = null);
+
+    /// <summary>Groups issue flows by status path and calculates median stage durations.</summary>
+    IReadOnlyList<FlowPathGroup> BuildFlowPathGroups(IReadOnlyList<IssueFlow> flows);
 }

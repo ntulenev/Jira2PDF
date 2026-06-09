@@ -13,10 +13,14 @@ internal sealed record JiraIssue
     /// <param name="key">Issue key.</param>
     /// <param name="fields">Normalized field values by key.</param>
     /// <param name="multiValueFields">Normalized multi-value field items by key.</param>
+    /// <param name="jiraId"></param>
+    /// <param name="createdAt"></param>
     public JiraIssue(
         IssueKey key,
         IReadOnlyDictionary<IssueKey, FieldValue> fields,
-        IReadOnlyDictionary<IssueKey, IReadOnlyList<FieldValue>>? multiValueFields = null)
+        IReadOnlyDictionary<IssueKey, IReadOnlyList<FieldValue>>? multiValueFields = null,
+        string? jiraId = null,
+        DateTimeOffset? createdAt = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(key.Value);
         ArgumentNullException.ThrowIfNull(fields);
@@ -24,6 +28,8 @@ internal sealed record JiraIssue
         Key = key;
         Fields = fields;
         MultiValueFields = multiValueFields ?? _emptyMultiValueFields;
+        JiraId = jiraId;
+        CreatedAt = createdAt;
     }
 
     /// <summary>
@@ -40,6 +46,12 @@ internal sealed record JiraIssue
     /// Gets normalized multi-value field items by key.
     /// </summary>
     public IReadOnlyDictionary<IssueKey, IReadOnlyList<FieldValue>> MultiValueFields { get; }
+
+    /// <summary>Gets Jira internal issue id.</summary>
+    public string? JiraId { get; }
+
+    /// <summary>Gets exact creation timestamp when returned by Jira.</summary>
+    public DateTimeOffset? CreatedAt { get; }
 
     /// <summary>
     /// Gets normalized field value by key.

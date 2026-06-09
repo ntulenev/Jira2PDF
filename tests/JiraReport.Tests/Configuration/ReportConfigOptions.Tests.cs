@@ -42,6 +42,7 @@ public sealed class ReportConfigOptionsTests
                     JsonPath = "end"
                 }
             },
+            BuildFlowTransitions = true,
             PdfReportName = "Sprint report"
         };
 
@@ -58,6 +59,7 @@ public sealed class ReportConfigOptionsTests
         options.ComputedFields["customfield_11728"].Type.Should().Be("LinkedIssueProgress");
         options.FieldValueConverters.Should().ContainKey("customfield_11869");
         options.FieldValueConverters["customfield_11869"].JsonPath.Should().Be("end");
+        options.BuildFlowTransitions.Should().BeTrue();
     }
 
     [Fact(DisplayName = "Validator reports missing name")]

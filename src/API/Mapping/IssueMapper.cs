@@ -68,7 +68,15 @@ internal sealed class IssueMapper : IIssueMapper
                     }
                 }
 
-                return new JiraIssue(new IssueKey(issue.Key!.Trim()), fields, multiValueFields);
+                DateTimeOffset? createdAt = null;
+                if (issue.Fields?.Values.TryGetValue("created", out var created) == true &&
+                    created.ValueKind == JsonValueKind.String &&
+                    DateTimeOffset.TryParse(created.GetString(), CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsedCreated))
+                {
+                    createdAt = parsedCreated;
+                }
+
+                return new JiraIssue(new IssueKey(issue.Key!.Trim()), fields, multiValueFields, issue.Id, createdAt);
             })];
     }
 

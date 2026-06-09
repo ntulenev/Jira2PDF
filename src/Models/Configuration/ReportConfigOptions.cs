@@ -49,6 +49,9 @@ internal sealed class ReportConfigOptions
     /// </summary>
     public IReadOnlyDictionary<string, FieldValueConverterOptions>? FieldValueConverters { get; init; }
 
+    /// <summary>Gets whether PDF workflow transition analytics should be built.</summary>
+    public bool BuildFlowTransitions { get; init; }
+
     /// <summary>
     /// Gets required PDF report title/file base name.
     /// </summary>

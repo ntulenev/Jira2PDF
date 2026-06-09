@@ -5,6 +5,9 @@ namespace JiraReport.Abstractions;
 /// </summary>
 internal interface ISerializer
 {
+    /// <summary>Serializes a value to JSON.</summary>
+    string Serialize<T>(T value);
+
     /// <summary>
     /// Deserializes JSON payload into target type.
     /// </summary>

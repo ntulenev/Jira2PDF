@@ -115,7 +115,8 @@ static IReadOnlyList<ReportConfig> ResolveReports(IReadOnlyList<ReportConfigOpti
             report.OutputFieldsAliases,
             report.CountFieldsAliases,
             ResolveComputedFields(report.ComputedFields),
-            ResolveFieldValueConverters(report.FieldValueConverters, report.OutputFieldsAliases)))
+            ResolveFieldValueConverters(report.FieldValueConverters, report.OutputFieldsAliases),
+            report.BuildFlowTransitions))
         .ToList();
 
     if (reports.Count == 0)

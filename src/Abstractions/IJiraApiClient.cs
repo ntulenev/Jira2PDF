@@ -23,4 +23,9 @@ internal interface IJiraApiClient
         IReadOnlyDictionary<string, ComputedFieldConfig>? computedFields,
         IReadOnlyDictionary<string, FieldValueConverterConfig>? fieldValueConverters,
         CancellationToken cancellationToken);
+
+    /// <summary>Loads status transition histories for issues.</summary>
+    Task<IReadOnlyList<IssueFlow>> LoadIssueFlowsAsync(
+        IReadOnlyList<JiraIssue> issues,
+        CancellationToken cancellationToken);
 }

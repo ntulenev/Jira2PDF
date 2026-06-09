@@ -170,6 +170,7 @@ Each report item supports:
 - `ComputedFields`: optional calculated field values by configured field key/name. `LinkedIssueProgress` can calculate Jira Product Discovery-style delivery progress from linked Jira work items.
 - `FieldValueConverters`: optional raw Jira field value converters by configured field key/name or output alias. `JsonPath` extracts a specific property from an object value before it is displayed, counted, exported to CSV, or rendered to PDF.
 - `PdfReportName`: required report title/file base name used for generated PDF name.
+- `BuildFlowTransitions`: optional boolean. When `true`, loads status changelogs, groups issues by workflow path, and adds median time-in-status infographics to PDF only. CSV output is unchanged.
 
 `LinkedIssueProgress` settings:
 - `LinkType`: Jira issue link type used to find delivery work items.

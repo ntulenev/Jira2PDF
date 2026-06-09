@@ -7,6 +7,10 @@ namespace JiraReport.Transport.Models;
 /// </summary>
 internal sealed class JiraIssueResponse
 {
+    /// <summary>Gets or sets issue id.</summary>
+    [JsonPropertyName("id")]
+    public string? Id { get; set; }
+
     /// <summary>
     /// Gets or sets issue key.
     /// </summary>

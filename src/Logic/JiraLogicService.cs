@@ -82,6 +82,31 @@ internal sealed class JiraLogicService : IJiraLogicService
         return new JiraJqlReport(reportTitle, configName, jql, DateTimeOffset.Now, issues, countTables);
     }
 
+    /// <inheritdoc />
+    public IReadOnlyList<FlowPathGroup> BuildFlowPathGroups(IReadOnlyList<IssueFlow> flows)
+    {
+        ArgumentNullException.ThrowIfNull(flows);
+        return [.. flows
+            .Where(static flow => flow.Transitions.Count > 0)
+            .GroupBy(static flow => string.Join(" -> ", flow.Transitions.Select(static transition => transition.From).Append(flow.Transitions[^1].To)),
+                StringComparer.OrdinalIgnoreCase)
+            .Select(group => new FlowPathGroup(
+                group.Key,
+                [.. group.Select(static flow => flow.Key).OrderBy(static key => key.Value, StringComparer.OrdinalIgnoreCase)],
+                [.. Enumerable.Range(0, group.First().Transitions.Count).Select(index =>
+                {
+                    var sample = group.Select(flow => flow.Transitions[index].TimeInFromStatus).OrderBy(static value => value).ToList();
+                    var middle = sample.Count / 2;
+                    var median = sample.Count % 2 == 0
+                        ? TimeSpan.FromTicks((sample[middle - 1].Ticks + sample[middle].Ticks) / 2)
+                        : sample[middle];
+                    var transition = group.First().Transitions[index];
+                    return new FlowStageSummary(transition.From, transition.To, median);
+                })]))
+            .OrderByDescending(static group => group.Issues.Count)
+            .ThenBy(static group => group.Path, StringComparer.OrdinalIgnoreCase)];
+    }
+
     private static List<CountTable> ResolveCountTables(
         IReadOnlyList<JiraIssue> issues,
         IReadOnlyList<IssueFieldName>? configuredCountFields,

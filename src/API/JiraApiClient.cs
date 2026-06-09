@@ -166,6 +166,85 @@ internal sealed class JiraApiClient : IJiraApiClient
         return page ?? throw new InvalidOperationException("Jira search response is empty.");
     }
 
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<IssueFlow>> LoadIssueFlowsAsync(
+        IReadOnlyList<JiraIssue> issues,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(issues);
+        var byId = issues
+            .Where(static issue => !string.IsNullOrWhiteSpace(issue.JiraId))
+            .ToDictionary(static issue => issue.JiraId!, StringComparer.OrdinalIgnoreCase);
+        if (byId.Count == 0)
+        {
+            return [];
+        }
+
+        var histories = new Dictionary<string, List<JiraBulkHistory>>(StringComparer.OrdinalIgnoreCase);
+        foreach (var batch in byId.Keys.Chunk(100))
+        {
+            string? token = null;
+            do
+            {
+                var response = await _transport.PostAsync<JiraBulkChangelogRequest, JiraBulkChangelogResponse>(
+                    new Uri("rest/api/3/changelog/bulkfetch", UriKind.Relative),
+                    new JiraBulkChangelogRequest { IssueIdsOrKeys = batch, NextPageToken = token },
+                    cancellationToken).ConfigureAwait(false)
+                    ?? throw new InvalidOperationException("Jira bulk changelog response is empty.");
+                foreach (var item in response.IssueChangeLogs.Where(static item => !string.IsNullOrWhiteSpace(item.IssueId)))
+                {
+                    if (!histories.TryGetValue(item.IssueId!, out var list))
+                    {
+                        list = [];
+                        histories[item.IssueId!] = list;
+                    }
+                    list.AddRange(item.ChangeHistories);
+                }
+                token = response.NextPageToken;
+            }
+            while (!string.IsNullOrWhiteSpace(token));
+        }
+
+        return [.. byId.Select(pair => BuildIssueFlow(pair.Value, histories.GetValueOrDefault(pair.Key, [])))];
+    }
+
+    private static IssueFlow BuildIssueFlow(JiraIssue issue, IReadOnlyList<JiraBulkHistory> histories)
+    {
+        var raw = histories
+            .SelectMany(history => history.Items
+                .Where(static item => string.Equals(item.Field, "status", StringComparison.OrdinalIgnoreCase) &&
+                    !string.IsNullOrWhiteSpace(item.From) && !string.IsNullOrWhiteSpace(item.To))
+                .Select(item => (At: ParseTimestamp(history.Created), From: item.From!.Trim(), To: item.To!.Trim())))
+            .Where(static item => item.At.HasValue)
+            .OrderBy(static item => item.At)
+            .ToList();
+        var previous = issue.CreatedAt ?? raw.FirstOrDefault().At ?? DateTimeOffset.MinValue;
+        var transitions = new List<FlowTransition>(raw.Count);
+        foreach (var (At, From, To) in raw)
+        {
+            var at = At!.Value;
+            transitions.Add(new FlowTransition(From, To, at, at > previous ? at - previous : TimeSpan.Zero));
+            previous = at;
+        }
+        return new IssueFlow(issue.Key, transitions);
+    }
+
+    private static DateTimeOffset? ParseTimestamp(JsonElement value)
+    {
+        if (value.ValueKind == JsonValueKind.String &&
+            DateTimeOffset.TryParse(value.GetString(), out var parsed))
+        {
+            return parsed;
+        }
+        if (value.ValueKind == JsonValueKind.Number && value.TryGetInt64(out var unix))
+        {
+            return Math.Abs(unix) >= 1_000_000_000_000
+                ? DateTimeOffset.FromUnixTimeMilliseconds(unix)
+                : DateTimeOffset.FromUnixTimeSeconds(unix);
+        }
+        return null;
+    }
+
     private async Task ApplyComputedFieldsAsync(
         JiraSearchResponse page,
         IReadOnlyDictionary<string, ComputedFieldConfig> computedFieldsByApiField,

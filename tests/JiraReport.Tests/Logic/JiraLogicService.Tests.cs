@@ -191,4 +191,38 @@ public sealed class JiraLogicServiceTests
         report.CountTables.Should().ContainSingle();
         report.CountTables[0].Title.Should().Be("By Sport");
     }
+
+    [Fact(DisplayName = "BuildFlowPathGroups groups matching paths and calculates median status duration")]
+    [Trait("Category", "Unit")]
+    public void BuildFlowPathGroupsWhenPathsMatchCalculatesMedianDuration()
+    {
+        // Arrange
+        var service = new JiraLogicService();
+        var at = new DateTimeOffset(2026, 5, 1, 8, 0, 0, TimeSpan.Zero);
+        var flows = new[]
+        {
+            new IssueFlow(
+                new IssueKey("QA-1"),
+                [
+                    new FlowTransition("To Do", "In Progress", at, TimeSpan.FromHours(2)),
+                    new FlowTransition("In Progress", "Done", at.AddHours(8), TimeSpan.FromHours(6))
+                ]),
+            new IssueFlow(
+                new IssueKey("QA-2"),
+                [
+                    new FlowTransition("To Do", "In Progress", at, TimeSpan.FromHours(4)),
+                    new FlowTransition("In Progress", "Done", at.AddHours(12), TimeSpan.FromHours(8))
+                ])
+        };
+
+        // Act
+        var groups = service.BuildFlowPathGroups(flows);
+
+        // Assert
+        groups.Should().ContainSingle();
+        groups[0].Path.Should().Be("To Do -> In Progress -> Done");
+        groups[0].Issues.Select(static key => key.Value).Should().ContainInOrder("QA-1", "QA-2");
+        groups[0].Stages[0].MedianDuration.Should().Be(TimeSpan.FromHours(3));
+        groups[0].Stages[1].MedianDuration.Should().Be(TimeSpan.FromHours(7));
+    }
 }

@@ -19,6 +19,7 @@ internal sealed record ReportConfig
     /// <param name="countFieldsAliases">Optional display aliases for requested grouped count fields.</param>
     /// <param name="computedFields">Optional computed fields by configured field key or name.</param>
     /// <param name="fieldValueConverters">Optional field value converters by configured field key or name.</param>
+    /// <param name="buildFlowTransitions">Whether PDF workflow transition analytics should be built.</param>
     public ReportConfig(
         ReportName name,
         JqlQuery jql,
@@ -28,7 +29,8 @@ internal sealed record ReportConfig
         IReadOnlyDictionary<string, string>? outputFieldsAliases = null,
         IReadOnlyDictionary<string, string>? countFieldsAliases = null,
         IReadOnlyDictionary<string, ComputedFieldConfig>? computedFields = null,
-        IReadOnlyDictionary<string, FieldValueConverterConfig>? fieldValueConverters = null)
+        IReadOnlyDictionary<string, FieldValueConverterConfig>? fieldValueConverters = null,
+        bool buildFlowTransitions = false)
     {
         ArgumentNullException.ThrowIfNull(outputFields);
         ArgumentNullException.ThrowIfNull(countFields);
@@ -42,6 +44,7 @@ internal sealed record ReportConfig
         CountFieldsAliases = NormalizeAliases(countFieldsAliases);
         ComputedFields = NormalizeComputedFields(computedFields);
         FieldValueConverters = NormalizeFieldValueConverters(fieldValueConverters);
+        BuildFlowTransitions = buildFlowTransitions;
     }
 
     /// <summary>
@@ -83,6 +86,9 @@ internal sealed record ReportConfig
     /// Gets optional field value converters by configured field key or name.
     /// </summary>
     public IReadOnlyDictionary<string, FieldValueConverterConfig> FieldValueConverters { get; }
+
+    /// <summary>Gets whether PDF workflow transition analytics should be built.</summary>
+    public bool BuildFlowTransitions { get; }
 
     /// <summary>
     /// Gets required PDF report title/file base name.
