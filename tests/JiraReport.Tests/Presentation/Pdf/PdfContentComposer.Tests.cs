@@ -80,6 +80,43 @@ public sealed class PdfContentComposerTests
         bytes.Should().NotBeEmpty();
     }
 
+    [Fact(DisplayName = "ComposeContent renders narrow workflow segments with long status names")]
+    [Trait("Category", "Unit")]
+    public void ComposeContentWhenWorkflowSegmentIsNarrowRendersPdf()
+    {
+        // Arrange
+        var composer = new PdfContentComposer();
+        var report = new JiraJqlReport(
+            new PdfReportName("QA Internal"),
+            new ReportName("QA Internal"),
+            new JqlQuery("project = QA"),
+            new DateTimeOffset(2026, 6, 9, 12, 0, 0, TimeSpan.Zero),
+            [new JiraIssue(new IssueKey("QA-7343"), new Dictionary<IssueKey, FieldValue>())],
+            [],
+            [
+                new FlowPathGroup(
+                    "Waiting for internal quality assurance -> Ready for production deployment -> Done",
+                    [new IssueKey("QA-7343")],
+                    [
+                        new FlowStageSummary(
+                            "Waiting for internal quality assurance",
+                            "Ready for production deployment",
+                            TimeSpan.FromHours(1)),
+                        new FlowStageSummary(
+                            "Ready for production deployment",
+                            "Done",
+                            TimeSpan.FromHours(1000))
+                    ])
+            ]);
+
+        // Act
+        var bytes = RenderDocument(column =>
+            composer.ComposeContent(column, report, CreateOutputColumns(), new JiraBaseUrl("https://example.test")));
+
+        // Assert
+        bytes.Should().NotBeEmpty();
+    }
+
     private static byte[] RenderDocument(Action<QuestPDF.Fluent.ColumnDescriptor> compose)
     {
         QuestPDF.Settings.License = QLicenseType.Community;

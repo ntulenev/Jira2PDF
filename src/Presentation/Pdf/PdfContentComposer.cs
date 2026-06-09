@@ -71,8 +71,21 @@ internal sealed class PdfContentComposer : IPdfContentComposer
             for (var index = 0; index < group.Stages.Count; index++)
             {
                 var color = _flowColors[index % _flowColors.Length];
-                _ = row.RelativeItem((float)weights[index]).Background(color).Padding(2)
-                    .AlignMiddle().Text(group.Stages[index].Status).FontSize(7).FontColor(Colors.White);
+                _ = row.RelativeItem((float)weights[index]).Background(color);
+            }
+        });
+        column.Item().Text(text =>
+        {
+            for (var index = 0; index < group.Stages.Count; index++)
+            {
+                if (index > 0)
+                {
+                    _ = text.Span("  ");
+                }
+
+                var color = _flowColors[index % _flowColors.Length];
+                _ = text.Span("[ ] ").FontColor(color);
+                _ = text.Span(group.Stages[index].Status);
             }
         });
 
